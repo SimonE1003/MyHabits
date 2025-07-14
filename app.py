@@ -28,13 +28,15 @@ def after_request(response):
 @app.route("/")
 @login_required
 def home():
-    db = get_db()
-    return apology("todo")
+    return redirect("today")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Log user in"""
     db = get_db()
+    db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT NOT NULL, hash TEXT NOT NULL, challenge_start_date DATE DEFAULT NULL);")
+    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS username_index ON users (username);')
+    db.commit()
     # Forget any user_id
     session.clear()
 
@@ -74,12 +76,16 @@ def register():
         return render_template("register.html")
     else:
         db = get_db()
+        db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT NOT NULL, hash TEXT NOT NULL, challenge_start_date DATE DEFAULT NULL);")
+        db.execute('CREATE UNIQUE INDEX IF NOT EXISTS username_index ON users (username);')
+        db.commit()
+
         if not request.form.get("username"):
             return apology("must enter username")
 
         elif not request.form.get("password"):
             return apology("must enter password")
-
+        
         elif request.form.get("confirmation") != request.form.get("password"):
             return apology("passwords and confirmation not the same")
 
@@ -113,6 +119,12 @@ def logout():
 def today():
     # Check if user has any habits
     db = get_db()
+    db.execute("""CREATE TABLE IF NOT EXISTS "habits" 
+               (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, phase TEXT, 
+               completed_days INTEGER DEFAULT 0, challenge_start DATE DEFAULT CURRENT_DATE, 
+               last_completed DATE DEFAULT NULL,FOREIGN KEY(user_id) REFERENCES users(id));""")
+    db.commit
+
     habit_count = db.execute("SELECT COUNT(*) AS count FROM habits WHERE user_id = ?", [session["user_id"]]).fetchone()["count"]
 
     if habit_count == 0:
