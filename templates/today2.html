@@ -1,0 +1,105 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Today2
+{% endblock %}
+
+{% block main %}
+
+    <div class="container">
+        <!-- Morning Habits -->
+        <div class="habit-section">
+            <h4>Morning</h4>
+            {% for habit in habits if habit.phase == "morning" %}
+            <div class="habit-item" id="habit-{{ habit.id }}">
+                <span>{{ habit.name }}</span>
+                <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
+                    {% if habit.last_completed == today %}Done{% else %}Mark Done{% endif %}
+                </button>
+            </div>
+            {% else %}
+                <p class="text-muted">No morning habits</p>
+            {% endfor %}
+        </div>
+
+        <!-- Afternoon Habits -->
+        <div class="habit-section">
+            <h4>Afternoon</h4>
+            {% for habit in habits if habit.phase == "afternoon" %}
+            <div class="habit-item" id="habit-{{ habit.id }}">
+                <span>{{ habit.name }}</span>
+                <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
+                    {% if habit.last_completed == today %}Done{% else %}Mark Done{% endif %}
+                </button>
+            </div>
+            {% else %}
+                <p class="text-muted">No afternoon habits</p>
+            {% endfor %}
+        </div>
+
+        <!-- Evening Habits -->
+        <div class="habit-section">
+            <h4>Evening</h4>
+            {% for habit in habits if habit.phase == "evening" %}
+            <div class="habit-item" id="habit-{{ habit.id }}">
+                <span>{{ habit.name }}</span>
+                <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
+                    {% if habit.last_completed == today %}Done{% else %}Mark Done{% endif %}
+                </button>
+            </div>
+            {% else %}
+                <p class="text-muted">No evening habits</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Random Quotes -->
+    <div class="motivational-quote" style="margin: 20px 0; padding: 10px;">
+        <p style="font-style: italic; margin: 0;">{{ random_quote }}</p>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-container">
+        {% if challenge_start %}
+            <h3>Day {{ challenge_day }} of 21</h3>
+            <div class="progress-bar">
+                <div class="progress" style="width: {{ ((challenge_day / 21) * 100)|round }}%"></div>
+            </div>
+            <small>Started: {{ challenge_start }}</small>
+        {% else %}
+            <a href="/set_habits" class="btn">Start Challenge</a>
+        {% endif %}
+    </div>
+
+    <script>
+        document.querySelectorAll('.mark-done').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                if (!confirm("Mark this habit as done?")) return;
+                
+                const habitId = this.dataset.habitId;
+                const habitItem = this.closest('.habit-item');
+                
+                try {
+                    const response = await fetch('/mark_done', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ habit_id: habitId })
+                    });
+                    
+                    const data = await response.json(); // Parse the JSON response
+                    
+                    if (response.ok && data.success) {
+                        this.classList.add('completed');
+                        this.textContent = "✓ Done";
+                        habitItem.style.opacity = "0.8";
+                    } else {
+                        alert(data.message || "Failed to update. Please reload.");
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    alert("Network error. Please check your connection.");
+                }
+            });
+        });
+    </script>
+{% endblock %}

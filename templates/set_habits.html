@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Set Habits
+{% endblock %}
+
+{% block main %}
+    <form method="post">
+        {% for i in range(6) %}
+        <div class="habit-input">
+            <input type="text" name="habit{{i}}" placeholder="Habit {{i+1}}" required>
+            <select name="phase{{i}}" required>
+                <option disabled selected value="">Time Phase</option>
+                <option value="morning">Morning</option>
+                <option value="afternoon">Afternoon</option>
+                <option value="evening">Evening</option>
+            </select>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-warning" 
+                onclick="return confirm('This will reset all progress. Continue?')">
+            Start 21-Day Challenge
+        </button>
+    </form>
+{% endblock %}
