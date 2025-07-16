@@ -140,7 +140,7 @@ def today():
             "A slight change in your daily habits can guide your life to a very different destination - James Clear",
             "Forget about goals, focus on systems instead - James Clear",
             "Goals are good for setting a direction, but systems are best for making progress - James Clear",
-            "Until you make the unconscious conscious, it will direct your life and you will call it fate - Carl Yung",
+            "Until you make the unconscious conscious, it will direct your life and you will call it fate - Carl Jung",
             "Environment is the invisible hand that shapes human behavior - James Clear",
             "Stay Hard! - David Goggins",
             "Discipline Equals Freedom - Jocko Willink"
