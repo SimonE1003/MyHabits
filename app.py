@@ -1,11 +1,24 @@
 import random
-
 from datetime import date
 from flask import Flask, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
+import pymysql
 
-from helpers import apology, login_required, get_db, init_app
+from helpers import apology, login_required
+
+def get_db():
+    conn = pymysql.connect(
+        host='localhost',
+        user='root',
+        password='Wym:050311',
+        database='myhabits',
+        charset='utf8mb4'  # 通常建议设置合适的字符集
+    )
+    return conn
+
+def init_app(app):
+    pass
 
 app = Flask(__name__)
 init_app(app)
@@ -32,9 +45,11 @@ def home():
 def login():
     """Log user in"""
     db = get_db()
-    db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT NOT NULL, hash TEXT NOT NULL, challenge_start_date DATE DEFAULT NULL);")
-    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS username_index ON users (username);')
+    with db.cursor(pymysql.cursors.DictCursor) as cursor:  # 使用DictCursor方便以字典形式获取结果
+        # 创建users表，自增主键使用AUTO_INCREMENT，创建唯一索引方式修改
+        cursor.execute("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY NOT NULL, username VARCHAR(255) NOT NULL, hash VARCHAR(255) NOT NULL, challenge_start_date DATE DEFAULT NULL, UNIQUE (username));")
     db.commit()
+
     # Forget any user_id
     session.clear()
 
@@ -48,8 +63,10 @@ def login():
         elif not request.form.get("password"):
             return apology("must enter password")
 
-        # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ?", [request.form.get("username")]).fetchall()
+        with db.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Query database for username
+            cursor.execute("SELECT * FROM users WHERE username = %s", (request.form.get("username"),))
+            rows = cursor.fetchall()
 
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(
@@ -74,8 +91,9 @@ def register():
         return render_template("register.html")
     else:
         db = get_db()
-        db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT NOT NULL, hash TEXT NOT NULL, challenge_start_date DATE DEFAULT NULL);")
-        db.execute('CREATE UNIQUE INDEX IF NOT EXISTS username_index ON users (username);')
+        with db.cursor(pymysql.cursors.DictCursor) as cursor:
+            # 创建users表，自增主键使用AUTO_INCREMENT，创建唯一索引方式修改
+            cursor.execute("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY NOT NULL, username VARCHAR(255) NOT NULL, hash VARCHAR(255) NOT NULL, challenge_start_date DATE DEFAULT NULL, UNIQUE (username));")
         db.commit()
 
         if not request.form.get("username"):
@@ -89,15 +107,20 @@ def register():
 
         username = request.form.get("username")
 
-        rows = db.execute("SELECT * FROM users WHERE username = ?", [username]).fetchall()
+        with db.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            rows = cursor.fetchall()
         if len(rows) != 0:
             return apology("username already exists")
 
         hash = generate_password_hash(request.form.get("password"), method='pbkdf2:sha256')
-        db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", [username, hash])
+        with db.cursor() as cursor:
+            cursor.execute("INSERT INTO users (username, hash) VALUES (%s, %s)", (username, hash))
         db.commit()
 
-        rows = db.execute("SELECT * FROM users WHERE username = ?", [username]).fetchall()
+        with db.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            rows = cursor.fetchall()
         session["user_id"] = rows[0]["id"]
 
     return redirect("/")
@@ -117,23 +140,38 @@ def logout():
 def today():
     # Check if user has any habits
     db = get_db()
-    db.execute("""CREATE TABLE IF NOT EXISTS "habits" 
-               (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, phase TEXT, 
-               completed_days INTEGER DEFAULT 0, challenge_start DATE DEFAULT CURRENT_DATE, 
-               last_completed DATE DEFAULT NULL,FOREIGN KEY(user_id) REFERENCES users(id));""")
-    db.commit
+    with db.cursor(pymysql.cursors.DictCursor) as cursor:
+        # 创建habits表，自增主键使用AUTO_INCREMENT，创建唯一索引方式修改
+        cursor.execute("""CREATE TABLE IF NOT EXISTS habits 
+                   (id INT AUTO_INCREMENT PRIMARY KEY, 
+                   user_id INT, 
+                   name VARCHAR(255), 
+                   phase VARCHAR(255), 
+                   completed_days INT DEFAULT 0, 
+                   challenge_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+                   last_completed DATE DEFAULT NULL,
+                   FOREIGN KEY(user_id) REFERENCES users(id));""")
+    db.commit()
 
-    habit_count = db.execute("SELECT COUNT(*) AS count FROM habits WHERE user_id = ?", [session["user_id"]]).fetchone()["count"]
+    with db.cursor(pymysql.cursors.DictCursor) as cursor:
+        cursor.execute("SELECT COUNT(*) AS count FROM habits WHERE user_id = %s", (session["user_id"],))
+        habit_count = cursor.fetchone()["count"]
 
     if habit_count == 0:
         return render_template("today1.html") 
     
     else:
-        user = db.execute("SELECT challenge_start_date FROM users WHERE id = ?",[session["user_id"]]).fetchone()
-        delta = date.today() - date.fromisoformat(user['challenge_start_date'])
-        current_day = min(max(1, delta.days + 1), 21)  # Clamp 1-21
+        with db.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT challenge_start_date FROM users WHERE id = %s", (session["user_id"],))
+            user = cursor.fetchone()
+        
+        challenge_start_date_str = str(user['challenge_start_date'])
+        delta = date.today() - date.fromisoformat(challenge_start_date_str)
+        current_day = min(max(1, delta.days + 1), 21)  # Clamp 1 - 21
 
-        habits = db.execute("SELECT id, name, phase, completed_days, last_completed FROM habits WHERE user_id = ?", [session["user_id"]]).fetchall()
+        with db.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT id, name, phase, completed_days, last_completed FROM habits WHERE user_id = %s", (session["user_id"],))
+            habits = cursor.fetchall()
 
         quotes = [
             "Up to 70% of our waking behaviors are made up of habitual behaviors. — Andrew Huberman",
@@ -158,10 +196,12 @@ def set_habits():
         today = date.today().isoformat()
 
         # Set challenge start date (NEW)
-        db.execute("UPDATE users SET challenge_start_date = ? WHERE id = ?",[today, session["user_id"]])
-        
+        with db.cursor() as cursor:
+            cursor.execute("UPDATE users SET challenge_start_date = %s WHERE id = %s", (today, session["user_id"]))
+
         # Delete existing habits if any
-        db.execute("DELETE FROM habits WHERE user_id = ?", [session["user_id"]])
+        with db.cursor() as cursor:
+            cursor.execute("DELETE FROM habits WHERE user_id = %s", (session["user_id"],))
         
         # Insert new habits
         for i in range(6):
@@ -170,7 +210,8 @@ def set_habits():
             if not name or not phase:
                 return apology("Missing habit name or time phase")
             else:
-                db.execute("INSERT INTO habits (user_id, name, phase) VALUES (?, ?, ?)", [session["user_id"], name, phase])
+                with db.cursor() as cursor:
+                    cursor.execute("INSERT INTO habits (user_id, name, phase) VALUES (%s, %s, %s)", (session["user_id"], name, phase))
         db.commit()
         return redirect("/today")
     
@@ -186,7 +227,8 @@ def mark_done():
         habit_id = request.json.get("habit_id")
         today = date.today().isoformat()
 
-        db.execute("UPDATE habits SET completed_days = completed_days + 1, last_completed = ? WHERE id = ?", [today, habit_id])
+        with db.cursor() as cursor:
+            cursor.execute("UPDATE habits SET completed_days = completed_days + 1, last_completed = %s WHERE id = %s", (today, habit_id))
         db.commit()
         return jsonify(success=True)
     except Exception as e:

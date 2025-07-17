@@ -1,5 +1,4 @@
-import sqlite3
-from flask import redirect, render_template, session, g
+from flask import redirect, render_template, session
 from functools import wraps
 
 DATABASE = 'myhabits.db'
@@ -43,20 +42,3 @@ def login_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
-
-def get_db():
-    """Get a database connection (reuses existing one per request)."""
-    if 'db' not in g:
-        g.db = sqlite3.connect(DATABASE)
-        g.db.row_factory = sqlite3.Row  # Return dict-like rows
-    return g.db
-
-def close_db(e=None):
-    """Close the database connection."""
-    db = g.pop('db', None)
-    if db is not None:
-        db.close()
-
-def init_app(app):
-    """Register database functions with Flask app."""
-    app.teardown_appcontext(close_db)
