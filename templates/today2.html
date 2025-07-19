@@ -14,7 +14,7 @@
             <div class="habit-item" id="habit-{{ habit.id }}">
                 <span>{{ habit.name }}</span>
                 <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
-                    {% if habit.last_completed == today %}Done{% else %}Mark Done{% endif %}
+                    {% if habit.last_completed == today %}✓ Done{% else %}Mark Done{% endif %}
                 </button>
             </div>
             {% else %}
@@ -29,7 +29,7 @@
             <div class="habit-item" id="habit-{{ habit.id }}">
                 <span>{{ habit.name }}</span>
                 <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
-                    {% if habit.last_completed == today %}Done{% else %}Mark Done{% endif %}
+                    {% if habit.last_completed == today %}✓ Done{% else %}Mark Done{% endif %}
                 </button>
             </div>
             {% else %}
@@ -44,7 +44,7 @@
             <div class="habit-item" id="habit-{{ habit.id }}">
                 <span>{{ habit.name }}</span>
                 <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
-                    {% if habit.last_completed == today %}Done{% else %}Mark Done{% endif %}
+                    {% if habit.last_completed == today %}✓ Done{% else %}Mark Done{% endif %}
                 </button>
             </div>
             {% else %}
@@ -91,7 +91,6 @@
                     if (response.ok && data.success) {
                         this.classList.add('completed');
                         this.textContent = "✓ Done";
-                        habitItem.style.opacity = "0.8";
                     } else {
                         alert(data.message || "Failed to update. Please reload.");
                     }

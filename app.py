@@ -1,5 +1,5 @@
 import random
-from datetime import date
+from datetime import date, datetime
 from flask import Flask, redirect, render_template, request, session, jsonify
 #from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -187,7 +187,10 @@ def today():
             "Discipline Equals Freedom - Jocko Willink"
         ]
         random_quote = random.choice(quotes)
-        return render_template("today2.html", habits=habits, today=date.today().isoformat(), challenge_day=current_day, challenge_start=user['challenge_start_date'], random_quote=random_quote)
+
+        today_date = datetime.strptime(date.today().isoformat(), '%Y-%m-%d').date()
+
+        return render_template("today2.html", habits=habits, today=today_date, challenge_day=current_day, challenge_start=user['challenge_start_date'], random_quote=random_quote)
 
 
 
