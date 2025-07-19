@@ -1,7 +1,7 @@
 import random
 from datetime import date
 from flask import Flask, redirect, render_template, request, session, jsonify
-from flask_session import Session
+#from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 import pymysql
 
@@ -24,9 +24,12 @@ app = Flask(__name__)
 init_app(app)
 
 # Configure session to use filesystem (instead of signed cookies)
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
-Session(app)
+#app.config["SESSION_PERMANENT"] = False
+#app.config["SESSION_TYPE"] = "filesystem"
+#Session(app)
+
+# 设置flask自带session所需的secret_key
+app.secret_key = 'your_secret_key'
 
 @app.after_request
 def after_request(response):
