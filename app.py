@@ -190,6 +190,7 @@ def today():
 
         today_date = datetime.strptime(date.today().isoformat(), '%Y-%m-%d').date()
         
+        current_day = 21
         if current_day == 21:
             return render_template("today3.html", habits=habits)
         
@@ -244,6 +245,10 @@ def mark_done():
         db.rollback()
         return jsonify(success=False, message=str(e)), 500
     
+@app.route("/info")
+@login_required
+def info():
+    return render_template("info.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
