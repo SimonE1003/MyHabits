@@ -190,7 +190,6 @@ def today():
 
         today_date = datetime.strptime(date.today().isoformat(), '%Y-%m-%d').date()
         
-        current_day = 21
         if current_day == 21:
             return render_template("today3.html", habits=habits)
         
