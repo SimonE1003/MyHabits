@@ -7,7 +7,7 @@
 {% block main %}
     <form method="post">
         {% for i in range(6) %}
-        <div class="habit-input">
+        <div class="habit-input" style="padding-bottom: 7px;">
             <input type="text" name="habit{{i}}" placeholder="Habit {{i+1}}" required>
             <select name="phase{{i}}" required>
                 <option disabled selected value="">Time Phase</option>

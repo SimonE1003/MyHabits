@@ -189,7 +189,11 @@ def today():
         random_quote = random.choice(quotes)
 
         today_date = datetime.strptime(date.today().isoformat(), '%Y-%m-%d').date()
-
+        
+        current_day = 21
+        if current_day == 21:
+            return render_template("today3.html", habits=habits)
+        
         return render_template("today2.html", habits=habits, today=today_date, challenge_day=current_day, challenge_start=user['challenge_start_date'], random_quote=random_quote)
 
 
@@ -240,7 +244,7 @@ def mark_done():
     except Exception as e:
         db.rollback()
         return jsonify(success=False, message=str(e)), 500
-
+    
 
 if __name__ == "__main__":
     app.run(debug=True)
