@@ -8,8 +8,8 @@
     <form method="post">
         {% for i in range(6) %}
         <div class="habit-input" style="padding-bottom: 7px;">
-            <input type="text" name="habit{{i}}" placeholder="Habit {{i+1}}" required>
-            <select name="phase{{i}}" required>
+            <input type="text" name="habit{{i}}" placeholder="Habit {{i+1}}">
+            <select name="phase{{i}}">
                 <option disabled selected value="">Time Phase</option>
                 <option value="morning">Morning</option>
                 <option value="afternoon">Afternoon</option>

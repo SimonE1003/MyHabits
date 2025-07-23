@@ -190,7 +190,7 @@ def today():
 
         today_date = datetime.strptime(date.today().isoformat(), '%Y-%m-%d').date()
         
-        current_day = 21
+        #current_day = 21
         if current_day == 21:
             return render_template("today3.html", habits=habits)
         
@@ -214,14 +214,21 @@ def set_habits():
             cursor.execute("DELETE FROM habits WHERE user_id = %s", (session["user_id"],))
         
         # Insert new habits
+        found_valid_habit = False
         for i in range(6):
             name = request.form.get(f"habit{i}")
             phase = request.form.get(f"phase{i}")
-            if not name or not phase:
-                return apology("Missing habit name or time phase")
-            else:
-                with db.cursor() as cursor:
-                    cursor.execute("INSERT INTO habits (user_id, name, phase) VALUES (%s, %s, %s)", (session["user_id"], name, phase))
+            if name:
+                if not phase:
+                    return apology("please enter a Time Phase for each habit")
+                else:
+                    found_valid_habit = True
+                    with db.cursor() as cursor:
+                        cursor.execute("INSERT INTO habits (user_id, name, phase) VALUES (%s, %s, %s)", (session["user_id"], name, phase))
+
+        if not found_valid_habit:
+            return apology("You need at least one habit")
+
         db.commit()
         return redirect("/today")
     
