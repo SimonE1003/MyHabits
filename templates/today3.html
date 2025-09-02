@@ -5,24 +5,28 @@
 {% endblock %}
 
 {% block main %}
-    <div class="container" style="padding-bottom: 20px;">
-        <p style="color: green; font-weight: bold;">Congratulations for completing the challenge!</p>
-        <h3 style="color: #333;">21 - Day Habit Report</h3>
-            {% for habit in habits %}
-            <div style="padding-bottom: 7px;">
-                <span>{{ habit.name }} - Completed Days: {{ habit.completed_days }}/21</span>
-            </div>
-            {% endfor %}
-    </div>
+    <div style="text-align: left;">
+        <div class="container" style="padding-bottom: 20px;">
+            <p style="color: green; font-weight: bold;">Congratulations for completing the challenge!</p>
+            <h3 style="color: #333;">21 - Day Habit Report</h3>
+                <ol>
+                    {% for habit in habits %}
+                        <li style="padding-bottom: 7px;">
+                            {{ habit.name }} - Completed Days: {{ habit.completed_days }}/21
+                        </li>
+                    {% endfor %}
+                </ol>
+        </div>
 
-    <div class="container">
-        
-        <h5 style="color: #333;">Tips</h5>
-            <div style="color: #555;">
-                <p>If this is your first time doing the challange, you are strongly advised to take the next 21 days to track the same 6 habits.</p>
-                <p>This is to see which habits are formed strongly, and which habits are not</p>
-                <p>After that, you can go back to the 21-day habit formation challange.</p>
-                <p>Use the report to determine if you can change strong habits into new habits you want to form.</p>
-            </div>
+        <div class="container">
+            
+            <h5 style="color: #333;">Tips</h5>
+                <ul style="color: #555;">
+                    <li>If this is your first time doing the challange, you are strongly advised to take the next 21 days to track the same 6 habits.</li>
+                    <li>This is to see which habits are formed strongly, and which habits are not</li>
+                    <li>After that, you can go back to the 21-day habit formation challange.</li>
+                    <li>Use the report to determine if you can change strong habits into new habits you want to form.</li>
+                </ul>
+        </div>
     </div>
 {% endblock %}
