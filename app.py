@@ -235,6 +235,18 @@ def set_habits():
     else:
         return render_template("set_habits.html")
 
+@app.route("/now", methods=["GET", "POST"])
+@login_required
+def now():
+    if request.method == "POST":
+        db = get_db()
+        with db.cursor(pymysql.cursors.DictCursor) as cursor:
+            today = date.today()
+            cursor.execute("SELECT name FROM habits WHERE user_id = %s AND (last_completed IS NULL OR last_completed != %s)", (session["user_id"], today))
+            habits_not_completed = cursor.fetchall()
+        return render_template('now_result.html', habits_not_completed=habits_not_completed)
+    return render_template('now.html')
+
 
 @app.route("/mark_done", methods=["POST"])
 @login_required

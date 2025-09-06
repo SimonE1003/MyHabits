@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Now - Results
+{% endblock %}
+
+{% block main %}
+    <h2>Today's Uncompleted Habits</h2>
+    <ul>
+        {% for habit in habits_not_completed %}
+        <li>{{ habit.name }}</li>
+        {% endfor %}
+    </ul>
+{% endblock %}
