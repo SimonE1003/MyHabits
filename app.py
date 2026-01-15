@@ -244,6 +244,10 @@ def now():
             today = date.today()
             cursor.execute("SELECT name FROM habits WHERE user_id = %s AND (last_completed IS NULL OR last_completed != %s)", (session["user_id"], today))
             habits_not_completed = cursor.fetchall()
+        
+        habits_string = ""
+        for habit in habits_not_completed:
+            habits_string += habit["name"] + ", "
         return render_template('now_result.html', habits_not_completed=habits_not_completed)
     return render_template('now.html')
 
