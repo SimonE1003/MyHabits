@@ -7,13 +7,15 @@ import pymysql
 
 from helpers import apology, login_required
 
+
+
 def get_db():
     conn = pymysql.connect(
-        host='localhost',
-        user='root',
-        password='Wym:050311',
-        database='myhabits',
-        charset='utf8mb4'  # 通常建议设置合适的字符集
+        host = 'localhost',
+        user = 'root',
+        password = os.environ.get('DB_PASSWORD'),
+        database = 'myhabits',
+        charset = 'utf8mb4'
     )
     return conn
 
