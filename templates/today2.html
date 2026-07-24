@@ -67,7 +67,7 @@
             </div>
             <small>Started: {{ challenge_start }}</small>
         {% else %}
-            <a href="/set_habits" class="btn">Start Challenge</a>
+            <a href="{{ url_for('set_habits') }}" class="btn">Start Challenge</a>
         {% endif %}
     </div>
 
@@ -80,7 +80,7 @@
                 const habitItem = this.closest('.habit-item');
                 
                 try {
-                    const response = await fetch('/mark_done', {
+                    const response = await fetch('{{ url_for('mark_done') }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ habit_id: habitId })

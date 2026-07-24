@@ -1,0 +1,10 @@
+:80 {
+	handle_path /habits/* {
+		reverse_proxy localhost:5000 {
+			header_up X-Script-Name /habits
+		}
+	}
+
+	root * /var/www/personal-webpage
+	file_server
+}

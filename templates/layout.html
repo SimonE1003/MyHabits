@@ -14,7 +14,7 @@
         <nav class="navbar navbar-dark bg-black navbar-expand-md">
             <div class="container-fluid">
             <!-- Brand (left side) -->
-                <a class="navbar-brand ps-3" href="/">MyHabits</a>
+                <a class="navbar-brand ps-3" href="{{ url_for('home') }}">MyHabits</a>
 
                 <!-- Toggle button (for mobile) -->
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,30 +25,30 @@
                     {% if session["user_id"] %}
                         <ul class="navbar-nav me-auto mt-2">
                             <li class="nav-item active px-2">
-                                <a class="nav-link" href="/today">Today</a>
+                                <a class="nav-link" href="{{ url_for('today') }}">Today</a>
                             </li>
                             <li class="nav-item active px-2">
-                                <a class="nav-link" href="/set_habits">Set Habits</a>
+                                <a class="nav-link" href="{{ url_for('set_habits') }}">Set Habits</a>
                             </li>
                             <li class="nav-item active px-2">
-                                <a class="nav-link" href="/info">Info</a>
+                                <a class="nav-link" href="{{ url_for('info') }}">Info</a>
                             </li>
                             <li class="nav-item active px-2">
-                                <a class="nav-link" href="/now">Now</a>
+                                <a class="nav-link" href="{{ url_for('now') }}">Now</a>
                             </li>
                         </ul>
                         <ul class="navbar-nav ms-auto mt-2">
-                            <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Log Out</a></li>
                         </ul>
                     {% else %}
                     <!-- Collapsible menu (right side) -->
                     <div class="collapse navbar-collapse" id="navbarNav">
                         <ul class="navbar-nav ms-auto">  <!-- "ms-auto" aligns right -->
                             <li class="nav-item active px-2">
-                                <a class="nav-link" href="/register">Register</a>
+                                <a class="nav-link" href="{{ url_for('register') }}">Register</a>
                             </li>
                             <li class="nav-item px-2">
-                                <a class="nav-link" href="/login">Log In</a>
+                                <a class="nav-link" href="{{ url_for('login') }}">Log In</a>
                         </ul>
                     </div>
                     {% endif %}
