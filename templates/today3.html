@@ -19,7 +19,7 @@
         </div>
 
         <div class="container">
-            
+
             <h5 style="color: #333;">Tips</h5>
                 <ul style="color: #555;">
                     <li>If this is your first time doing the challange, you are strongly advised to take the next 21 days to track the same 6 habits.</li>
@@ -28,5 +28,14 @@
                     <li>Use the report to determine if you can change strong habits into new habits you want to form.</li>
                 </ul>
         </div>
+
+        {% if challenge_finished %}
+        <div class="container" style="margin-top: 20px;">
+            <a href="{{ url_for('set_habits') }}" class="btn btn-warning"
+               onclick="return confirm('Starting a new challenge will reset all current progress. Continue?')">
+                Start a New 21-Day Challenge
+            </a>
+        </div>
+        {% endif %}
     </div>
 {% endblock %}

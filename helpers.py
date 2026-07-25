@@ -1,7 +1,6 @@
 from flask import redirect, render_template, session
 from functools import wraps
 
-DATABASE = 'myhabits.db'
 
 def apology(message, code=400):
     """Render message as an apology to user."""
