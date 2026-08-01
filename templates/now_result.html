@@ -1,14 +1,36 @@
 {% extends "layout.html" %}
 
-{% block title %}
-    Now - Results
-{% endblock %}
+{% block title %} · {{ t('nav.now') }}{% endblock %}
 
 {% block main %}
-    <h2>Today's Uncompleted Habits</h2>
-    <ul>
-        {% for habit in habits_not_completed %}
-        <li>{{ habit.name }}</li>
-        {% endfor %}
-    </ul>
+<div class="page">
+    <div class="shell">
+        {% if state == 'no_habits' %}
+        <div class="eyebrow">{{ t('now_result.no_habits_eyebrow') }}</div>
+        <h1 class="lede" style="margin-bottom: 32px;">{{ t('now_result.no_habits_lede') }}</h1>
+        <p class="muted" style="max-width: 480px; margin: 0 0 40px;">{{ t('now_result.no_habits_desc') }}</p>
+        <a href="{{ url_for('set_habits') }}" class="btn btn-primary">{{ t('now_result.no_habits_btn') }}</a>
+
+        {% elif state == 'not_started' %}
+        <div class="eyebrow">{{ t('now_result.not_started_eyebrow') }}</div>
+        <h1 class="lede" style="margin-bottom: 32px;">{{ t('now_result.not_started_lede') }}</h1>
+        <p class="muted" style="max-width: 480px; margin: 0 0 40px;">{{ t('now_result.not_started_desc') }}</p>
+        <a href="{{ url_for('set_habits') }}" class="btn btn-primary">{{ t('now_result.not_started_btn') }}</a>
+
+        {% elif state == 'challenge_finished' %}
+        <div class="eyebrow">{{ t('now_result.finished_eyebrow') }}</div>
+        <h1 class="lede" style="margin-bottom: 32px;">{{ t('now_result.finished_lede') }}</h1>
+        <p class="muted" style="max-width: 480px; margin: 0 0 40px;">{{ t('now_result.finished_desc') }}</p>
+        <a href="{{ url_for('set_habits') }}" class="btn btn-primary">{{ t('now_result.finished_btn') }}</a>
+        <a href="{{ url_for('today') }}" class="btn btn-ghost" style="margin-left: 12px;">{{ t('now_result.back_today') }}</a>
+
+        {% elif state == 'all_done' %}
+        <div class="eyebrow">{{ t('now_result.all_done_eyebrow') }}</div>
+        <h1 class="lede" style="margin-bottom: 32px;">{{ t('now_result.all_done_lede') }}</h1>
+        <p class="muted" style="margin-top: 32px;">{{ t('now_result.all_done_desc') }}</p>
+        <a href="{{ url_for('today') }}" class="btn btn-ghost" style="margin-top: 40px;">{{ t('now_result.back_today') }}</a>
+
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

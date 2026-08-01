@@ -1,25 +1,33 @@
 {% extends "layout.html" %}
 
-{% block title %}
-    Set Habits
-{% endblock %}
+{% block title %} · {{ t('nav.set_habits') }}{% endblock %}
 
 {% block main %}
-    <form method="post">
-        {% for i in range(6) %}
-        <div class="habit-input" style="padding-bottom: 7px;">
-            <input type="text" name="habit{{i}}" placeholder="Habit {{i+1}}">
-            <select name="phase{{i}}">
-                <option disabled selected value="">Time Phase</option>
-                <option value="morning">Morning</option>
-                <option value="afternoon">Afternoon</option>
-                <option value="evening">Evening</option>
-            </select>
-        </div>
-        {% endfor %}
-        <button type="submit" class="btn btn-warning" 
-                onclick="return confirm('This will reset all progress. Continue?')">
-            Start 21-Day Challenge
-        </button>
-    </form>
+<div class="page">
+    <div class="shell">
+        <div class="eyebrow">{{ t('set_habits.eyebrow') }}</div>
+        <h1 class="lede">{{ t('set_habits.lede') | replace('\n', '<br>') | safe }}</h1>
+        <p class="muted" style="max-width: 540px;">{{ t('set_habits.desc') }}</p>
+
+        <form method="post" style="margin-top: 48px;">
+            {% for i in range(6) %}
+            <div class="row-habits" style="margin-bottom: 14px;">
+                <input class="input" type="text" name="habit{{ i }}" placeholder="{{ t('set_habits.placeholder') }} {{ i + 1 }}">
+                <select class="select" name="phase{{ i }}">
+                    <option disabled selected value="">{{ t('set_habits.phase') }}</option>
+                    <option value="morning">{{ t('today.morning') }}</option>
+                    <option value="afternoon">{{ t('today.afternoon') }}</option>
+                    <option value="evening">{{ t('today.evening') }}</option>
+                </select>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary btn-large"
+                    style="margin-top: 32px; width: 100%;"
+                    onclick="return confirm('{{ t('set_habits.confirm') }}')">
+                {{ t('set_habits.btn') }}
+            </button>
+        </form>
+    </div>
+</div>
 {% endblock %}

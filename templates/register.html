@@ -1,20 +1,37 @@
 {% extends "layout.html" %}
 
-{% block title %}
-    Register
-{% endblock %}
+{% block title %} · {{ t('auth.register_btn') }}{% endblock %}
 
 {% block main %}
-    <form action="{{ url_for('register') }}" method="post">
-        <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username" type="text">
+<div class="auth-wrap">
+    <div class="auth-brand">MyHabits</div>
+    <div class="auth-tag">{{ t('auth.tag_register') }}</div>
+
+    {% if error_key %}
+    <div class="inline-error" role="alert">
+        <span class="inline-error-mark" aria-hidden="true">!</span>
+        <span>{{ t(error_key) }}</span>
+    </div>
+    {% endif %}
+
+    <form class="auth-form" action="{{ url_for('register') }}" method="post">
+        <div class="field">
+            <label>{{ t('auth.username') }}</label>
+            <input class="input" autocomplete="off" autofocus name="username" placeholder="{{ t('auth.username_ph') }}" type="text" required value="{{ username_value }}">
         </div>
-        <div class="mb-3">
-            <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
+        <div class="field">
+            <label>{{ t('auth.password') }}</label>
+            <input class="input" name="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" type="password" required>
         </div>
-        <div class="mb-3">
-            <input class="form-control mx-auto w-auto" name="confirmation" placeholder="Confirmation" type="password">
+        <div class="field">
+            <label>{{ t('auth.confirm') }}</label>
+            <input class="input" name="confirmation" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" type="password" required>
         </div>
-        <button class="btn btn-primary" type="submit">Register</button>
+        <button class="btn btn-primary btn-large" style="width: 100%; margin-top: 8px;" type="submit">{{ t('auth.register_btn') }}</button>
     </form>
+
+    <div class="auth-alt">
+        {{ t('auth.have_account') }} <a href="{{ url_for('login') }}">{{ t('auth.login_link') }}</a>
+    </div>
+</div>
 {% endblock %}

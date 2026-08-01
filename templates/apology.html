@@ -1,11 +1,14 @@
 {% extends "layout.html" %}
 
-{% block title %}
-    Apology
-{% endblock %}
+{% block title %} · {{ t('apology.title') }}{% endblock %}
 
 {% block main %}
-    <!-- https://memegen.link/ -->
-    <!-- https://knowyourmeme.com/memes/grumpy-cat -->
-    <img alt="{{ top }}" class="border img-fluid" src="https://api.memegen.link/images/custom/{{ top | urlencode }}/{{ bottom | urlencode }}.jpg?background=https://i.imgur.com/CsCgN7Ll.png&width=400" title="{{ top }}">
+<div class="apology">
+    <div class="apology-mark" aria-hidden="true"></div>
+    <h1 class="apology-title">{{ t('apology.title') }}</h1>
+    {% if bottom %}
+    <p class="apology-msg">{{ bottom }}</p>
+    {% endif %}
+    <a href="javascript:history.back()" class="btn btn-ghost">{{ t('apology.back') }}</a>
+</div>
 {% endblock %}

@@ -1,11 +1,18 @@
 import os
 import random
 import sqlite3
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from flask import Flask, g, redirect, render_template, request, session, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
+from dotenv import load_dotenv
 
 from helpers import apology, login_required
+from ai_planner import generate_plan
+from translations import t as translate, QUOTE_KEYS
+
+load_dotenv()
+
+SHANGHAI_TZ = timezone(timedelta(hours=8))
 
 DATABASE = os.environ.get('DATABASE', 'myhabits.db')
 
@@ -69,8 +76,17 @@ app = Flask(__name__)
 # invalidates all sessions on every restart, so it's dev-only.
 app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
 
+# Keep users logged in for 30 days instead of just until the browser closes.
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+
 # Initialize schema at import time so tables exist before first request.
 init_db()
+
+
+@app.before_request
+def make_session_permanent():
+    """Extend every session to use the 30-day lifetime."""
+    session.permanent = True
 
 
 @app.teardown_appcontext
@@ -89,6 +105,27 @@ def after_request(response):
     return response
 
 
+# ---------- i18n ----------
+
+SUPPORTED_LANGS = {'en', 'zh'}
+
+@app.context_processor
+def inject_i18n():
+    """Make t(key) and lang available in every template."""
+    lang = session.get('lang', 'en')
+    return {'t': lambda key: translate(key, lang), 'lang': lang}
+
+
+@app.route("/set_language", methods=["POST"])
+def set_language():
+    """Switch language. Called via fetch from the nav button."""
+    lang = (request.json or {}).get('lang', 'en')
+    if lang not in SUPPORTED_LANGS:
+        return jsonify(success=False), 400
+    session['lang'] = lang
+    return jsonify(success=True)
+
+
 # ---------- Auth routes ----------
 
 @app.route("/")
@@ -100,24 +137,27 @@ def home():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Log user in"""
+    # Preserve language preference across session.clear()
+    saved_lang = session.get('lang')
     session.clear()
+    if saved_lang:
+        session['lang'] = saved_lang
     db = get_db()
 
     if request.method == "POST":
-        if not request.form.get("username"):
-            return apology("must enter username")
-        if not request.form.get("password"):
-            return apology("must enter password")
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+
+        if not username or not password:
+            return render_template("login.html", error_key="login.error_both", username_value=username), 400
 
         rows = db.execute(
             "SELECT * FROM users WHERE username = ?",
-            (request.form.get("username"),)
+            (username,)
         ).fetchall()
 
-        if len(rows) != 1 or not check_password_hash(
-            rows[0]["hash"], request.form.get("password")
-        ):
-            return apology("invalid username and/or password")
+        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], password):
+            return render_template("login.html", error_key="login.error_match", username_value=username), 401
 
         session["user_id"] = rows[0]["id"]
         return redirect("/")
@@ -132,21 +172,22 @@ def register():
         return render_template("register.html")
 
     db = get_db()
-    if not request.form.get("username"):
-        return apology("must enter username")
-    if not request.form.get("password"):
-        return apology("must enter password")
-    if request.form.get("confirmation") != request.form.get("password"):
-        return apology("passwords and confirmation not the same")
+    username = request.form.get("username", "")
+    password = request.form.get("password", "")
+    confirmation = request.form.get("confirmation", "")
 
-    username = request.form.get("username")
+    if not username or not password:
+        return render_template("register.html", error_key="register.error_both", username_value=username), 400
+    if confirmation != password:
+        return render_template("register.html", error_key="register.error_match", username_value=username), 400
+
     rows = db.execute(
         "SELECT id FROM users WHERE username = ?", (username,)
     ).fetchall()
     if len(rows) != 0:
-        return apology("username already exists")
+        return render_template("register.html", error_key="register.error_taken", username_value=username), 409
 
-    pw_hash = generate_password_hash(request.form.get("password"), method='pbkdf2:sha256')
+    pw_hash = generate_password_hash(password, method='pbkdf2:sha256')
     cursor = db.execute(
         "INSERT INTO users (username, hash) VALUES (?, ?)", (username, pw_hash)
     )
@@ -199,17 +240,7 @@ def today():
         # Challenge finished: show the report + link to start a new round.
         return render_template("today3.html", habits=habits, challenge_finished=True)
 
-    quotes = [
-        "Up to 70% of our waking behaviors are made up of habitual behaviors. — Andrew Huberman",
-        "A slight change in your daily habits can guide your life to a very different destination - James Clear",
-        "Forget about goals, focus on systems instead - James Clear",
-        "Goals are good for setting a direction, but systems are best for making progress - James Clear",
-        "Until you make the unconscious conscious, it will direct your life and you will call it fate - Carl Jung",
-        "Environment is the invisible hand that shapes human behavior - James Clear",
-        "Stay Hard! - David Goggins",
-        "Discipline Equals Freedom - Jocko Willink"
-    ]
-    random_quote = random.choice(quotes)
+    random_quote_key = random.choice(QUOTE_KEYS)
 
     return render_template(
         "today2.html",
@@ -217,7 +248,7 @@ def today():
         today=today_str,
         challenge_day=max(1, current_day),
         challenge_start=challenge_start,
-        random_quote=random_quote
+        random_quote_key=random_quote_key
     )
 
 
@@ -234,11 +265,11 @@ def set_habits():
             phase = request.form.get(f"phase{i}")
             if name:
                 if not phase:
-                    return apology("please enter a Time Phase for each habit")
+                    return apology(translate("set_habits.error_no_phase", session.get('lang', 'en')))
                 new_habits.append((name, phase))
 
         if not new_habits:
-            return apology("You need at least one habit")
+            return apology(translate("set_habits.error_no_habit", session.get('lang', 'en')))
 
         today = date.today().isoformat()
         try:
@@ -268,20 +299,120 @@ def set_habits():
     return render_template("set_habits.html")
 
 
-@app.route("/now", methods=["GET", "POST"])
+@app.route("/now", methods=["GET"])
 @login_required
 def now():
-    if request.method == "POST":
-        db = get_db()
-        today_str = date.today().isoformat()
-        habits_not_completed = db.execute(
-            """SELECT name FROM habits
-               WHERE user_id = ?
-                 AND (last_completed IS NULL OR last_completed != ?)""",
-            (session["user_id"], today_str)
-        ).fetchall()
-        return render_template('now_result.html', habits_not_completed=habits_not_completed)
-    return render_template('now.html')
+    """Show the 'Now' page.
+
+    Only available during an active 21-day challenge:
+    - No habits set, challenge not started, or challenge finished →
+      prompt the user to set habits / start a new round.
+    - All habits done today → 'today complete' message.
+    - Otherwise → bedtime input + 'What to do now' AI planner.
+    """
+    db = get_db()
+    today_str = date.today().isoformat()
+    total_habits = db.execute(
+        "SELECT COUNT(*) AS n FROM habits WHERE user_id = ?",
+        (session["user_id"],)
+    ).fetchone()["n"]
+
+    # No habits yet → set habits first.
+    if total_habits == 0:
+        return render_template('now_result.html', state='no_habits')
+
+    # Mirror /today's challenge-window checks so /now is only usable mid-challenge.
+    user = db.execute(
+        "SELECT challenge_start_date FROM users WHERE id = ?",
+        (session["user_id"],)
+    ).fetchone()
+    challenge_start = user['challenge_start_date']
+
+    # Has habits but challenge never started → set habits to begin.
+    if challenge_start is None:
+        return render_template('now_result.html', state='not_started')
+
+    today_date = date.today()
+    current_day = (today_date - date.fromisoformat(str(challenge_start))).days + 1
+
+    # 21-day challenge finished → prompt to start a new round.
+    if current_day > 21:
+        return render_template('now_result.html', state='challenge_finished')
+
+    # Inside the challenge window: proceed as normal.
+    habits_not_completed = db.execute(
+        """SELECT name, phase FROM habits
+           WHERE user_id = ?
+             AND (last_completed IS NULL OR last_completed != ?)""",
+        (session["user_id"], today_str)
+    ).fetchall()
+
+    if not habits_not_completed:
+        return render_template('now_result.html', state='all_done')
+
+    current_time = datetime.now(SHANGHAI_TZ).strftime("%H:%M")
+    return render_template('now.html', habits_not_completed=habits_not_completed, current_time=current_time)
+
+
+@app.route("/api/now_plan", methods=["POST"])
+@login_required
+def now_plan():
+    """Generate an AI plan for the user's remaining habits today.
+
+    Only callable during an active 21-day challenge. Expects JSON body:
+    {"bedtime": "23:30"} (bedtime optional). Returns JSON:
+    {"plan": "...", "latency_ms": ..., "usage": {...}} or {"error": "..."}.
+    """
+    db = get_db()
+    today_str = date.today().isoformat()
+
+    # Same challenge-window guard as /now — defense in depth against
+    # direct API calls outside the challenge.
+    total_habits = db.execute(
+        "SELECT COUNT(*) AS n FROM habits WHERE user_id = ?",
+        (session["user_id"],)
+    ).fetchone()["n"]
+    if total_habits == 0:
+        return jsonify({"error": "No habits set. Define your habits first."}), 400
+
+    user = db.execute(
+        "SELECT challenge_start_date FROM users WHERE id = ?",
+        (session["user_id"],)
+    ).fetchone()
+    challenge_start = user['challenge_start_date']
+    if challenge_start is None:
+        return jsonify({"error": "Challenge not started. Set your habits to begin."}), 400
+
+    today_date = date.today()
+    current_day = (today_date - date.fromisoformat(str(challenge_start))).days + 1
+    if current_day > 21:
+        return jsonify({"error": "This 21-day challenge is complete. Start a new round to plan again."}), 400
+
+    habits_not_completed = db.execute(
+        """SELECT name, phase FROM habits
+           WHERE user_id = ?
+             AND (last_completed IS NULL OR last_completed != ?)""",
+        (session["user_id"], today_str)
+    ).fetchall()
+
+    if not habits_not_completed:
+        return jsonify({"error": "All habits are already done today."}), 400
+
+    data = request.get_json(silent=True) or {}
+    bedtime = data.get("bedtime") or None
+    lang = session.get('lang', 'en')
+
+    habits_list = [{"name": h["name"], "phase": h["phase"]} for h in habits_not_completed]
+    result = generate_plan(habits_list, bedtime=bedtime, lang=lang)
+
+    if result["error"]:
+        return jsonify({"error": result["error"]}), 502
+
+    return jsonify({
+        "plan": result["plan"],
+        "latency_ms": result["latency_ms"],
+        "usage": result["usage"],
+    })
 
 
 @app.route("/mark_done", methods=["POST"])

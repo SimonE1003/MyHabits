@@ -1,20 +1,51 @@
 # MyHabits
-#### Video Demo: https://drive.google.com/file/d/1bJg8sx0Y6s5AtFmHucTsREn9lsn5rVgy/view?usp=sharing
-#### Description:
 
-This project is called "MyHabits", a habit tracker that incorporates neuroscience introduced by Andrew Huberman regarding habit formation, as well as the famous book "Atomic Habits". In one of the Andrew Huberman podcasts, he introduced a protocol of a "21-day habit forming challenge", where a person selects six habits that he/she want to form, associates a time phase (morning, afternoon, or evening) rather than a specific time to make the habit more flexible and context-independent. Atomic Habits praises the idea of a habit tracker, as it raises awareness of one's habits. As Carl Jung once said, "Until you make the unconscious conscious, it will direct your life and you will call it fate." I aim to create a web application that enables people to systematically track their habits, helping them form good habits and improve themselves.
+A 21-day habit tracker built around the protocol popularized by Andrew Huberman and the ideas in *Atomic Habits*. Pick six habits, slot them into morning / afternoon / evening, and mark them done each day. After 21 days, review your report and start a new round.
 
-The tech stack for this project is SQLite (later changed to MySQL), Flask, Python, HTML, CSS, and JavaScript. Regarding the SQLite database, I created two tables: users and habits. The "users" table has a primary key id, username, hash (of their password), and challenge_start_date. All elements besides challenge_start_date will be set in the register page. The other table, "habits," has id, user_id (which is a foreign key that references the id in the users table), name (of the habit), phase (morning, afternoon, or evening), completed_days, and last_completed. 
+## Features
 
-I've used the code I wrote for the finance problem set to set up the "Login" and "Register" pages. All pages except these two are "Login-Required". In the register page, it will insert the username and password (after hashing it) into the users table. The login page will check the username and password in the users table and let the user in if they match. For these two pages, I have considered error cases, such as when the user leaves any field blank, the username/password do not match, there is already a user using that name, etc. Every time an error is triggered, the apology.html (taken from the finance problem set) and the relevant error message will appear. 
+**21-Day Challenge**
+Define up to six habits and assign each to a time phase (morning, afternoon, evening). Track daily completion across a 21-day cycle, with a progress bar showing which day you're on and how many days remain. Each phase auto-collapses once all its habits are done, keeping the view calm and focused.
 
-After the user has registered and logged in, they will see two main pages: "Today" and "Set Habits". On the "Today" page, there can be two scenarios, the first of which is when the user has not set any habits (likely a newly registered user). In this case, "today1.html" will be rendered, informing the user that they need to go to the "Set Habits" page to set their habits. 
+**AI Evening Planner (Now)**
+The standout feature. Open the "Now" page, enter your planned bedtime, and tap "What to do now." The app sends your remaining habits, the current time, and your bedtime to an AI model (HKU Claude API), which returns a concrete time-blocked plan for the evening. It knows to skip habits that would hurt sleep (e.g. an intense workout 60 minutes before bed) and orders activities from energizing to calming so you wind down naturally.
 
-The "Set Habits" page has six input fields and six related selection bars. The user will type the content of the habit into the input field and the time phase (morning, afternoon, or evening) into the time phase selection bar. After that, the user can click the "Start 21-day challenge" to start the program. Once they click the button, all of the inputs will be stored in the habits table, and today's date will be stored in the challenge_start_date in the users table. 
+**Bilingual (English / 中文)**
+Switch language from the button in the top-right corner. Your preference is remembered across sessions. The AI planner also responds in the selected language.
 
-After that, the user will be redirected to the today table, where today2.html will appear. On this page, the user will see the morning section, the afternoon section, and the evening section, each containing relevant habits. If there are no habits in a section, it will simply show "no habits in this section". Below that is a random quote selected from a list of quotes each time the page is loaded, to provide the user with a little more motivation and inspiration. And below that, at the bottom of the page, is a progress bar showing the progress over 21 days; it will also explicitly indicate which day the user is on out of 21 days, as well as the challenge start date. Next to each habit there is a "Mark Done" button, in which the user can click after completing the habit; before displaying, the page will check the "last_completed" column of that habit in the habits table, if the last completed date is not today it will show the "Mark Done" button ready to be clicked. When the user clicks the button (and confirms via a JavaScript pop-up), the last_complete column will be updated, and the button will be disabled, changed to "Done", and have a green color, indicating that the habit has been completed. The completed days of that habit will also be incremented by one. 
+**Daily Quotes**
+Each time you open the Today page, a quote about habits and discipline appears—from Andrew Huberman, James Clear, Carl Jung, David Goggins, and Jocko Willink.
 
-–Below are the functions yet to be implemented
-After 21 days, on the Today page, a report of the performance for the past 21 days will be shown, indicating how many times each habit was completed during the 21-day period. The user will review these reports to identify which habits are solid and which ones need more work, and they can then start the 21-day cycle all over again. 
+**Completion Report**
+After 21 days, a report shows how many days each habit was completed. Use it to decide which habits are solid and which need another cycle, then start fresh.
 
-I have considered making this online, but SQLite is not scalable. I have explored libsql, but I find the asynchronous approach a bit challenging to program, so I think I will switch the database to MySQL after completing the CS50 SQL course to make it online accessible.
+**Field Guide**
+An Info page explains the protocol, suggests sample habits grounded in science (sunlight viewing, meditation, NSDR, etc.), and links to the source material.
+
+## Run Locally
+
+```bash
+cd "Habit Tracker"
+python3 -m venv venv
+source venv/bin/activate
+pip install flask python-dotenv
+python app.py
+```
+
+Then open http://127.0.0.1:5000 in your browser.
+
+The AI planner requires a `.env` file with HKU Claude API credentials:
+```
+HKU_CLAUDE_API_KEY=your-key
+HKU_CLAUDE_ENDPOINT=https://api.hku.hk/claude/student/model
+HKU_CLAUDE_MODEL=claude-haiku-4.5
+```
+The app works without it—only the AI planner feature will be unavailable.
+
+## Tech Stack
+
+Flask, SQLite, vanilla HTML/CSS/JS. No frontend framework, no build step.
+
+## Credits
+
+Built by Simon Wang. Protocol design informed by Andrew Huberman's podcast and James Clear's *Atomic Habits*.

@@ -1,10 +1,15 @@
 {% extends "layout.html" %}
 
-{% block title %}
-    Today1
-{% endblock %}
+{% block title %} · {{ t('nav.today') }}{% endblock %}
 
 {% block main %}
-    <h1>You have not yet started the challange.</h1>
-    <h1>Go to the "Set Habits" page to set some habits!</h1>
+<div class="page">
+    <div class="empty-state">
+        <div class="eyebrow">{{ t('today.empty_eyebrow') }}</div>
+        <div class="display-num">00<span class="of">/</span><span class="total">21</span></div>
+        <p class="lede" style="margin-top: 24px;">{{ t('today.empty_lede') }}</p>
+        <p class="muted" style="max-width: 480px; margin: 0 auto 40px;">{{ t('today.empty_desc') }}</p>
+        <a href="{{ url_for('set_habits') }}" class="btn btn-primary btn-large">{{ t('today.empty_btn') }}</a>
+    </div>
+</div>
 {% endblock %}

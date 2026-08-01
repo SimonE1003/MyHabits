@@ -1,104 +1,116 @@
 {% extends "layout.html" %}
 
-{% block title %}
-    Today2
-{% endblock %}
+{% block title %} · {{ t('nav.today') }}{% endblock %}
 
 {% block main %}
+<div class="page">
+    <div class="shell">
+        <!-- Hero: day counter as visual anchor -->
+        <div class="eyebrow">{{ t('nav.today') }} {{ challenge_day }} &middot; {{ t('today.started') }} {{ challenge_start }}</div>
+        <div class="display-num">{{ "%02d" | format(challenge_day) }}<span class="of">/</span><span class="total">21</span></div>
 
-    <div class="container">
-        <!-- Morning Habits -->
-        <div class="habit-section">
-            <h4>Morning</h4>
-            {% for habit in habits if habit.phase == "morning" %}
-            <div class="habit-item" id="habit-{{ habit.id }}">
-                <span>{{ habit.name }}</span>
-                <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
-                    {% if habit.last_completed == today %}✓ Done{% else %}Mark Done{% endif %}
-                </button>
+        <!-- Progress -->
+        <div class="progress-wrap">
+            <div class="progress-track">
+                <div class="progress-fill" style="width: {{ ((challenge_day / 21) * 100) | round }}%"></div>
             </div>
-            {% else %}
-                <p class="text-muted">No morning habits</p>
-            {% endfor %}
+            <div class="progress-meta">
+                <span>{{ ((challenge_day / 21) * 100) | round }}% {{ t('today.pct_complete') }}</span>
+                <span>{{ 21 - challenge_day }} {{ t('today.days_remaining') }}</span>
+            </div>
         </div>
 
-        <!-- Afternoon Habits -->
-        <div class="habit-section">
-            <h4>Afternoon</h4>
-            {% for habit in habits if habit.phase == "afternoon" %}
-            <div class="habit-item" id="habit-{{ habit.id }}">
-                <span>{{ habit.name }}</span>
-                <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
-                    {% if habit.last_completed == today %}✓ Done{% else %}Mark Done{% endif %}
-                </button>
+        <!-- Habits by phase -->
+        {% set phases = [('morning', t('today.morning')), ('afternoon', t('today.afternoon')), ('evening', t('today.evening'))] %}
+        {% for phase_code, phase_name in phases %}
+            {% set phase_habits = habits | selectattr('phase', 'equalto', phase_code) | list %}
+            {% if phase_habits %}
+            {% set done_count = phase_habits | selectattr('last_completed', 'equalto', today) | list | length %}
+            {% set all_done = (done_count == phase_habits | length) %}
+            <div class="phase-group {% if all_done %}collapsed{% endif %}" data-phase="{{ phase_code }}" style="margin-top: 56px;">
+                <div class="phase-label" data-toggle="phase">
+                    <span class="phase-toggle" aria-hidden="true">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                            <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="name">{{ phase_name }}</span>
+                    <span class="line"></span>
+                    <span class="count" data-phase="{{ phase_code }}">{{ done_count }} / {{ phase_habits | length }} {{ t('today.done') }}</span>
+                </div>
+                <div class="phase-body">
+                    {% for habit in phase_habits %}
+                    <div class="habit-row {% if habit.last_completed == today %}done{% endif %}" id="habit-{{ habit.id }}">
+                        <span class="name">{{ habit.name }}</span>
+                        <button class="mark-done {% if habit.last_completed == today %}completed{% endif %}" data-habit-id="{{ habit.id }}">
+                            {% if habit.last_completed == today %}{{ t('today.done') }}{% else %}{{ t('today.mark') }}{% endif %}
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
-            {% else %}
-                <p class="text-muted">No afternoon habits</p>
-            {% endfor %}
-        </div>
+            {% endif %}
+        {% endfor %}
 
-        <!-- Evening Habits -->
-        <div class="habit-section">
-            <h4>Evening</h4>
-            {% for habit in habits if habit.phase == "evening" %}
-            <div class="habit-item" id="habit-{{ habit.id }}">
-                <span>{{ habit.name }}</span>
-                <button class="mark-done {{ 'completed' if habit.last_completed == today else '' }}" data-habit-id="{{ habit.id }}">
-                    {% if habit.last_completed == today %}✓ Done{% else %}Mark Done{% endif %}
-                </button>
-            </div>
-            {% else %}
-                <p class="text-muted">No evening habits</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Random Quotes -->
-    <div class="motivational-quote" style="margin: 20px 0; padding: 10px;">
-        <p style="font-style: italic; margin: 0;">{{ random_quote }}</p>
-    </div>
-
-    <!-- Progress Bar -->
-    <div class="progress-container">
-        {% if challenge_start %}
-            <h3>Day {{ challenge_day }} of 21</h3>
-            <div class="progress-bar">
-                <div class="progress" style="width: {{ ((challenge_day / 21) * 100)|round }}%"></div>
-            </div>
-            <small>Started: {{ challenge_start }}</small>
-        {% else %}
-            <a href="{{ url_for('set_habits') }}" class="btn">Start Challenge</a>
+        <!-- Quote -->
+        {% if random_quote_key %}
+        <div class="quote">{{ t(random_quote_key) }}</div>
         {% endif %}
     </div>
+</div>
+{% endblock %}
 
-    <script>
-        document.querySelectorAll('.mark-done').forEach(btn => {
-            btn.addEventListener('click', async function() {
-                if (!confirm("Mark this habit as done?")) return;
-                
-                const habitId = this.dataset.habitId;
-                const habitItem = this.closest('.habit-item');
-                
-                try {
-                    const response = await fetch('{{ url_for('mark_done') }}', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ habit_id: habitId })
-                    });
-                    
-                    const data = await response.json(); // Parse the JSON response
-                    
-                    if (response.ok && data.success) {
-                        this.classList.add('completed');
-                        this.textContent = "✓ Done";
-                    } else {
-                        alert(data.message || "Failed to update. Please reload.");
-                    }
-                } catch (error) {
-                    console.error("Error:", error);
-                    alert("Network error. Please check your connection.");
-                }
-            });
+{% block scripts %}
+<script>
+    // Toggle phase collapse on label click
+    document.querySelectorAll('.phase-label[data-toggle="phase"]').forEach(label => {
+        label.addEventListener('click', () => {
+            label.closest('.phase-group').classList.toggle('collapsed');
         });
-    </script>
+    });
+
+    document.querySelectorAll('.mark-done').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            if (!confirm("{{ t('today.confirm_done') }}")) return;
+
+            const habitId = this.dataset.habitId;
+            const habitItem = this.closest('.habit-item') || this.closest('.habit-row');
+            const doneLabel = "{{ t('today.done') }}";
+
+            try {
+                const response = await fetch('{{ url_for("mark_done") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ habit_id: habitId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    this.classList.add('completed');
+                    this.textContent = doneLabel;
+                    if (habitItem) habitItem.classList.add('done');
+
+                    // Update phase count and auto-collapse when complete
+                    const phaseEl = habitItem.closest('.phase-group');
+                    const countEl = phaseEl?.querySelector('.count');
+                    if (countEl && phaseEl) {
+                        const [done, total] = countEl.textContent.match(/\d+/g).map(Number);
+                        const newDone = Math.min(done + 1, total);
+                        countEl.textContent = `${newDone} / ${total} ${doneLabel}`;
+                        if (newDone === total) {
+                            // Small delay so the user sees the final habit turn to "Done"
+                            setTimeout(() => phaseEl.classList.add('collapsed'), 350);
+                        }
+                    }
+                } else {
+                    alert(data.message || "{{ t('today.failed_update') }}");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("{{ t('today.network_error') }}");
+            }
+        });
+    });
+</script>
 {% endblock %}
