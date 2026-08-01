@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from helpers import apology, login_required
 from ai_planner import generate_plan
+from stats import compute_user_stats
 from translations import t as translate, QUOTE_KEYS
 
 load_dotenv()
@@ -574,6 +575,26 @@ def mark_done():
 @login_required
 def info():
     return render_template("info.html")
+
+
+@app.route("/stats")
+@login_required
+def stats():
+    """Show discipline metrics and a calendar heatmap of the user's history.
+
+    Pulls data from all challenge rounds (active + archived) so the user
+    sees their full trajectory, not just the current round.
+    """
+    user_id = session["user_id"]
+    user_tz = get_user_timezone(user_id)
+    db = get_db()
+    data = compute_user_stats(db, user_id, user_tz=user_tz)
+
+    if data is None:
+        # No habits at all → same empty state as /today
+        return render_template("stats.html", has_data=False)
+
+    return render_template("stats.html", has_data=True, stats=data)
 
 
 # ---------- Reverse proxy middleware ----------

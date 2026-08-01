@@ -746,6 +746,253 @@ a:hover { color: var(--text); }
     font-size: 14px;
 }
 
+/* ---------- Stats page ---------- */
+.stats-hero {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 32px 0;
+}
+.score-ring {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+}
+.score-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 36px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+.score-meta { flex: 1; }
+.score-level {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--accent);
+    margin-bottom: 4px;
+}
+.score-sub {
+    color: var(--text-muted);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+}
+.score-note {
+    margin-top: 8px;
+    color: var(--text-faint);
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* Dimension cards */
+.dim-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+@media (max-width: 720px) {
+    .dim-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 20px;
+}
+.dim-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 8px;
+}
+.dim-value {
+    font-family: var(--font-display);
+    font-size: 24px;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+.dim-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+.dim-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 1s var(--ease);
+}
+.dim-pts {
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+}
+
+/* Calendar heatmap (GitHub-style) */
+.heatmap-wrap {
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+.heatmap-grid {
+    display: grid;
+    grid-template-rows: repeat(7, 13px);
+    grid-auto-flow: column;
+    grid-auto-columns: 13px;
+    gap: 3px;
+    width: max-content;
+}
+.heat-cell {
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: transform 0.15s var(--ease);
+}
+.heat-cell:hover {
+    transform: scale(1.4);
+    z-index: 1;
+}
+.heat-cell.empty {
+    background: transparent;
+}
+.heat-cell.empty:hover { transform: none; }
+/* Intensity levels — subtle amber gradient */
+.heat-cell.level-0 { background: var(--surface-2); }
+.heat-cell.level-1 { background: rgba(212, 165, 116, 0.25); }
+.heat-cell.level-2 { background: rgba(212, 165, 116, 0.45); }
+.heat-cell.level-3 { background: rgba(212, 165, 116, 0.7); }
+.heat-cell.level-4 { background: var(--accent); }
+.heat-cell.legend {
+    display: inline-block;
+    margin: 0 1px;
+}
+.heat-cell.legend:hover { transform: none; }
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 12px;
+}
+
+/* Per-round history */
+.rounds-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+.round-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 20px;
+    transition: border-color var(--dur) var(--ease);
+}
+.round-card.active {
+    border-color: var(--accent);
+}
+.round-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.round-num {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--text-muted);
+}
+.round-badge {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-glow);
+    padding: 3px 8px;
+    border-radius: 10px;
+}
+.round-rate {
+    font-family: var(--font-display);
+    font-size: 28px;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+.round-meta {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-bottom: 12px;
+}
+.round-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.round-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 1s var(--ease);
+}
+.round-habits {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.round-habit {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+}
+.round-habit-name { color: var(--text-muted); }
+.round-habit-stat { color: var(--text-faint); }
+
+/* Per-habit detail bars */
+.habit-stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.habit-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.habit-stat-name {
+    width: 160px;
+    flex-shrink: 0;
+    font-size: 14px;
+    color: var(--text);
+}
+.habit-stat-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.habit-stat-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 1s var(--ease);
+}
+.habit-stat-num {
+    width: 50px;
+    text-align: right;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Utility ---------- */
 .text-center { text-align: center; }
 .mt-0 { margin-top: 0; }

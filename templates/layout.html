@@ -21,6 +21,7 @@
                     <li><a href="{{ url_for('today') }}" class="{% if request.endpoint == 'today' %}active{% endif %}">{{ t('nav.today') }}</a></li>
                     <li><a href="{{ url_for('set_habits') }}" class="{% if request.endpoint == 'set_habits' %}active{% endif %}">{{ t('nav.set_habits') }}</a></li>
                     <li><a href="{{ url_for('now') }}" class="{% if request.endpoint == 'now' %}active{% endif %}">{{ t('nav.now') }}</a></li>
+                    <li><a href="{{ url_for('stats') }}" class="{% if request.endpoint == 'stats' %}active{% endif %}">{{ t('nav.stats') }}</a></li>
                     <li><a href="{{ url_for('info') }}" class="{% if request.endpoint == 'info' %}active{% endif %}">{{ t('nav.info') }}</a></li>
                     <li><a href="{{ url_for('logout') }}" onclick="return confirm('{{ t('logout.confirm') }}');">{{ t('nav.logout') }}</a></li>
                 {% else %}
