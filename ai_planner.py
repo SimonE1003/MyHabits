@@ -56,13 +56,15 @@ SYSTEM_PROMPTS = {
 }
 
 
-def generate_plan(habits_not_completed, bedtime=None, lang='en'):
+def generate_plan(habits_not_completed, bedtime=None, lang='en', user_tz=None):
     """Generate an evening plan using HKU Claude API.
 
     Args:
         habits_not_completed: list of dicts with 'name' and 'phase' keys.
         bedtime: str like "23:30" or None.
         lang: 'en' or 'zh' — controls output language.
+        user_tz: a tzinfo (ZoneInfo or timezone) for computing current time.
+                 Defaults to Shanghai time if not provided.
 
     Returns:
         dict with keys: plan (str|None), latency_ms (int|None),
@@ -84,7 +86,9 @@ def generate_plan(habits_not_completed, bedtime=None, lang='en'):
             "usage": {},
         }
 
-    now_sh = datetime.now(SHANGHAI_TZ)
+    # Use the caller's timezone (per-user), falling back to Shanghai.
+    tz = user_tz if user_tz is not None else SHANGHAI_TZ
+    now_sh = datetime.now(tz)
     current_time = now_sh.strftime("%H:%M")
 
     habit_list = "\n".join(

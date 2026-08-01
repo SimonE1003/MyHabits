@@ -89,6 +89,11 @@ TRANSLATIONS = {
     'set_habits.confirm':  {'en': 'This will reset all progress. Continue?', 'zh': '这会重置所有进度，确定继续吗？'},
     'set_habits.error_no_habit': {'en': 'You need at least one habit', 'zh': '至少需要填写一个习惯'},
     'set_habits.error_no_phase': {'en': 'please enter a Time Phase for each habit', 'zh': '请为每个习惯选择时段'},
+    'set_habits.timezone': {'en': 'Your timezone', 'zh': '你的时区'},
+    'set_habits.timezone_desc': {
+        'en': 'Used to calculate your daily cutoff. Pick where you currently live.',
+        'zh': '用于计算你每天的习惯打卡截止时间。选择你目前所在的地区。'
+    },
 
     # ---- Now page ----
     'now.lede':            {'en': 'What remains undone today?', 'zh': '今天还剩什么没做？'},

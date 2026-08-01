@@ -98,9 +98,13 @@
         const timeout = setTimeout(() => controller.abort(), 90000);
 
         try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
             const resp = await fetch('/api/now_plan', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
                 body: JSON.stringify({ bedtime: bedtime }),
                 signal: controller.signal
             });

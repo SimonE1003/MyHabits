@@ -2,7 +2,9 @@ import os
 import random
 import sqlite3
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from flask import Flask, g, redirect, render_template, request, session, jsonify
+from flask_wtf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 from dotenv import load_dotenv
 
@@ -12,7 +14,23 @@ from translations import t as translate, QUOTE_KEYS
 
 load_dotenv()
 
+# Default timezone for the app (used when user hasn't picked one).
+DEFAULT_TIMEZONE = 'Asia/Shanghai'
 SHANGHAI_TZ = timezone(timedelta(hours=8))
+
+# Timezone options shown on the set_habits page.
+# (IANA name, display label) — label is city + UTC offset, language-neutral.
+SUPPORTED_TIMEZONES = [
+    ('Asia/Shanghai',        '北京/上海 (UTC+8)'),
+    ('Asia/Hong_Kong',       '香港 (UTC+8)'),
+    ('Asia/Tokyo',           '东京 (UTC+9)'),
+    ('Asia/Singapore',       '新加坡 (UTC+8)'),
+    ('America/Los_Angeles',  'Los Angeles (UTC-8)'),
+    ('America/New_York',     'New York (UTC-5)'),
+    ('Europe/London',        'London (UTC+0)'),
+    ('UTC',                  'UTC'),
+]
+SUPPORTED_TIMEZONE_NAMES = {tz for tz, _ in SUPPORTED_TIMEZONES}
 
 DATABASE = os.environ.get('DATABASE', 'myhabits.db')
 
@@ -38,7 +56,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             username TEXT NOT NULL UNIQUE,
             hash TEXT NOT NULL,
-            challenge_start_date DATE DEFAULT NULL
+            challenge_start_date DATE DEFAULT NULL,
+            timezone TEXT DEFAULT 'Asia/Shanghai'
         );
 
         CREATE TABLE IF NOT EXISTS habits (
@@ -49,6 +68,8 @@ def init_db():
             completed_days INTEGER DEFAULT 0,
             challenge_start DATE DEFAULT (date('now')),
             last_completed DATE DEFAULT NULL,
+            challenge_round INTEGER DEFAULT 1,
+            archived INTEGER DEFAULT 0,
             FOREIGN KEY(user_id) REFERENCES users(id)
         );
 
@@ -69,6 +90,28 @@ def init_db():
     db.close()
 
 
+def migrate_db():
+    """Add new columns to existing tables. Idempotent — safe to run every startup.
+
+    SQLite's ALTER TABLE ADD COLUMN lets us evolve the schema without losing data.
+    """
+    db = sqlite3.connect(DATABASE)
+    db.row_factory = sqlite3.Row
+
+    user_cols = {c['name'] for c in db.execute("PRAGMA table_info(users)").fetchall()}
+    if 'timezone' not in user_cols:
+        db.execute("ALTER TABLE users ADD COLUMN timezone TEXT DEFAULT 'Asia/Shanghai'")
+
+    habit_cols = {c['name'] for c in db.execute("PRAGMA table_info(habits)").fetchall()}
+    if 'challenge_round' not in habit_cols:
+        db.execute("ALTER TABLE habits ADD COLUMN challenge_round INTEGER DEFAULT 1")
+    if 'archived' not in habit_cols:
+        db.execute("ALTER TABLE habits ADD COLUMN archived INTEGER DEFAULT 0")
+
+    db.commit()
+    db.close()
+
+
 # ---------- App setup ----------
 
 app = Flask(__name__)
@@ -79,8 +122,13 @@ app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
 # Keep users logged in for 30 days instead of just until the browser closes.
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
+# CSRF protection on all POST routes. Exemptions are applied per-route below.
+csrf = CSRFProtect(app)
+
 # Initialize schema at import time so tables exist before first request.
 init_db()
+# Evolve existing databases by adding new columns (timezone, challenge_round, archived).
+migrate_db()
 
 
 @app.before_request
@@ -94,6 +142,27 @@ def close_db(exc):
     db = g.pop('db', None)
     if db is not None:
         db.close()
+
+
+# ---------- Timezone helpers ----------
+
+def get_user_timezone(user_id):
+    """Return the user's ZoneInfo, defaulting to Asia/Shanghai.
+
+    Falls back gracefully if the stored timezone name is invalid.
+    """
+    db = get_db()
+    row = db.execute("SELECT timezone FROM users WHERE id = ?", (user_id,)).fetchone()
+    tz_name = row['timezone'] if row and row['timezone'] else DEFAULT_TIMEZONE
+    try:
+        return ZoneInfo(tz_name)
+    except (KeyError, ValueError):
+        return ZoneInfo(DEFAULT_TIMEZONE)
+
+
+def user_today(user_id):
+    """Today's date in the user's timezone — replaces date.today() everywhere."""
+    return datetime.now(get_user_timezone(user_id)).date()
 
 
 @app.after_request
@@ -117,6 +186,7 @@ def inject_i18n():
 
 
 @app.route("/set_language", methods=["POST"])
+@csrf.exempt
 def set_language():
     """Switch language. Called via sendBeacon from the nav button."""
     # sendBeacon sends with Content-Type from the Blob, but some browsers
@@ -216,9 +286,10 @@ def logout():
 @login_required
 def today():
     db = get_db()
+    user_id = session["user_id"]
     habit_count = db.execute(
-        "SELECT COUNT(*) AS count FROM habits WHERE user_id = ?",
-        (session["user_id"],)
+        "SELECT COUNT(*) AS count FROM habits WHERE user_id = ? AND archived = 0",
+        (user_id,)
     ).fetchone()["count"]
 
     if habit_count == 0:
@@ -226,21 +297,21 @@ def today():
 
     user = db.execute(
         "SELECT challenge_start_date FROM users WHERE id = ?",
-        (session["user_id"],)
+        (user_id,)
     ).fetchone()
 
     challenge_start = user['challenge_start_date']
     if challenge_start is None:
         return render_template("today1.html")
 
-    today_date = date.today()
+    today_date = user_today(user_id)
     today_str = today_date.isoformat()
     delta = today_date - date.fromisoformat(str(challenge_start))
     current_day = delta.days + 1  # Day 1 = first day of the challenge
 
     habits = db.execute(
-        "SELECT id, name, phase, completed_days, last_completed FROM habits WHERE user_id = ?",
-        (session["user_id"],)
+        "SELECT id, name, phase, completed_days, last_completed FROM habits WHERE user_id = ? AND archived = 0",
+        (user_id,)
     ).fetchall()
 
     if current_day > 21:
@@ -262,6 +333,7 @@ def today():
 @app.route("/set_habits", methods=["GET", "POST"])
 @login_required
 def set_habits():
+    user_id = session["user_id"]
     if request.method == "POST":
         db = get_db()
 
@@ -279,23 +351,36 @@ def set_habits():
         if not new_habits:
             return apology(translate("set_habits.error_no_habit", session.get('lang', 'en')))
 
-        today = date.today().isoformat()
+        # Validate timezone (falls back to default if invalid/missing)
+        tz_val = request.form.get("timezone", DEFAULT_TIMEZONE)
+        if tz_val not in SUPPORTED_TIMEZONE_NAMES:
+            tz_val = DEFAULT_TIMEZONE
+
+        today = user_today(user_id).isoformat()
         try:
+            # Archive current habits instead of deleting — preserves history.
+            # habit_logs are kept too since the habit rows still exist.
             db.execute(
-                "UPDATE users SET challenge_start_date = ? WHERE id = ?",
-                (today, session["user_id"])
+                "UPDATE habits SET archived = 1 WHERE user_id = ? AND archived = 0",
+                (user_id,)
             )
-            # ON DELETE CASCADE not guaranteed without PRAGMA, so delete logs explicitly.
+
+            # Determine next challenge round (1 if no prior rounds exist)
+            round_row = db.execute(
+                "SELECT MAX(challenge_round) AS max_round FROM habits WHERE user_id = ?",
+                (user_id,)
+            ).fetchone()
+            next_round = (round_row['max_round'] or 0) + 1
+
             db.execute(
-                """DELETE FROM habit_logs WHERE habit_id IN
-                   (SELECT id FROM habits WHERE user_id = ?)""",
-                (session["user_id"],)
+                "UPDATE users SET challenge_start_date = ?, timezone = ? WHERE id = ?",
+                (today, tz_val, user_id)
             )
-            db.execute("DELETE FROM habits WHERE user_id = ?", (session["user_id"],))
+
             for name, phase in new_habits:
                 db.execute(
-                    "INSERT INTO habits (user_id, name, phase) VALUES (?, ?, ?)",
-                    (session["user_id"], name, phase)
+                    "INSERT INTO habits (user_id, name, phase, challenge_round, archived) VALUES (?, ?, ?, ?, 0)",
+                    (user_id, name, phase, next_round)
                 )
             db.commit()
         except Exception:
@@ -304,7 +389,11 @@ def set_habits():
 
         return redirect("/today")
 
-    return render_template("set_habits.html")
+    # GET: pass timezone info so the dropdown can show the current selection.
+    db = get_db()
+    user = db.execute("SELECT timezone FROM users WHERE id = ?", (user_id,)).fetchone()
+    current_tz = user['timezone'] if user and user['timezone'] else DEFAULT_TIMEZONE
+    return render_template("set_habits.html", timezones=SUPPORTED_TIMEZONES, current_timezone=current_tz)
 
 
 @app.route("/now", methods=["GET"])
@@ -319,10 +408,11 @@ def now():
     - Otherwise → bedtime input + 'What to do now' AI planner.
     """
     db = get_db()
-    today_str = date.today().isoformat()
+    user_id = session["user_id"]
+    today_str = user_today(user_id).isoformat()
     total_habits = db.execute(
-        "SELECT COUNT(*) AS n FROM habits WHERE user_id = ?",
-        (session["user_id"],)
+        "SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND archived = 0",
+        (user_id,)
     ).fetchone()["n"]
 
     # No habits yet → set habits first.
@@ -332,7 +422,7 @@ def now():
     # Mirror /today's challenge-window checks so /now is only usable mid-challenge.
     user = db.execute(
         "SELECT challenge_start_date FROM users WHERE id = ?",
-        (session["user_id"],)
+        (user_id,)
     ).fetchone()
     challenge_start = user['challenge_start_date']
 
@@ -340,7 +430,7 @@ def now():
     if challenge_start is None:
         return render_template('now_result.html', state='not_started')
 
-    today_date = date.today()
+    today_date = user_today(user_id)
     current_day = (today_date - date.fromisoformat(str(challenge_start))).days + 1
 
     # 21-day challenge finished → prompt to start a new round.
@@ -350,15 +440,15 @@ def now():
     # Inside the challenge window: proceed as normal.
     habits_not_completed = db.execute(
         """SELECT name, phase FROM habits
-           WHERE user_id = ?
+           WHERE user_id = ? AND archived = 0
              AND (last_completed IS NULL OR last_completed != ?)""",
-        (session["user_id"], today_str)
+        (user_id, today_str)
     ).fetchall()
 
     if not habits_not_completed:
         return render_template('now_result.html', state='all_done')
 
-    current_time = datetime.now(SHANGHAI_TZ).strftime("%H:%M")
+    current_time = datetime.now(get_user_timezone(user_id)).strftime("%H:%M")
     return render_template('now.html', habits_not_completed=habits_not_completed, current_time=current_time)
 
 
@@ -372,35 +462,36 @@ def now_plan():
     {"plan": "...", "latency_ms": ..., "usage": {...}} or {"error": "..."}.
     """
     db = get_db()
-    today_str = date.today().isoformat()
+    user_id = session["user_id"]
+    today_str = user_today(user_id).isoformat()
 
     # Same challenge-window guard as /now — defense in depth against
     # direct API calls outside the challenge.
     total_habits = db.execute(
-        "SELECT COUNT(*) AS n FROM habits WHERE user_id = ?",
-        (session["user_id"],)
+        "SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND archived = 0",
+        (user_id,)
     ).fetchone()["n"]
     if total_habits == 0:
         return jsonify({"error": "No habits set. Define your habits first."}), 400
 
     user = db.execute(
         "SELECT challenge_start_date FROM users WHERE id = ?",
-        (session["user_id"],)
+        (user_id,)
     ).fetchone()
     challenge_start = user['challenge_start_date']
     if challenge_start is None:
         return jsonify({"error": "Challenge not started. Set your habits to begin."}), 400
 
-    today_date = date.today()
+    today_date = user_today(user_id)
     current_day = (today_date - date.fromisoformat(str(challenge_start))).days + 1
     if current_day > 21:
         return jsonify({"error": "This 21-day challenge is complete. Start a new round to plan again."}), 400
 
     habits_not_completed = db.execute(
         """SELECT name, phase FROM habits
-           WHERE user_id = ?
+           WHERE user_id = ? AND archived = 0
              AND (last_completed IS NULL OR last_completed != ?)""",
-        (session["user_id"], today_str)
+        (user_id, today_str)
     ).fetchall()
 
     if not habits_not_completed:
@@ -409,9 +500,10 @@ def now_plan():
     data = request.get_json(silent=True) or {}
     bedtime = data.get("bedtime") or None
     lang = session.get('lang', 'en')
+    user_tz = get_user_timezone(user_id)
 
     habits_list = [{"name": h["name"], "phase": h["phase"]} for h in habits_not_completed]
-    result = generate_plan(habits_list, bedtime=bedtime, lang=lang)
+    result = generate_plan(habits_list, bedtime=bedtime, lang=lang, user_tz=user_tz)
 
     if result["error"]:
         return jsonify({"error": result["error"]}), 502
@@ -428,6 +520,7 @@ def now_plan():
 def mark_done():
     """Mark a habit as done for today. Idempotent: clicking twice does not double-count."""
     db = get_db()
+    user_id = session["user_id"]
     try:
         data = request.get_json(silent=True)
         if not data or "habit_id" not in data:
@@ -440,13 +533,12 @@ def mark_done():
                 raise ValueError
         except (TypeError, ValueError):
             return jsonify(success=False, message="Invalid habit id"), 400
-        today = date.today().isoformat()
-        user_id = session["user_id"]
+        today = user_today(user_id).isoformat()
 
-        # Step 1: verify ownership BEFORE touching habit_logs, so a user
-        # can't probe whether someone else's habit was already marked today.
+        # Step 1: verify ownership AND habit is active (not archived) BEFORE
+        # touching habit_logs, so a user can't probe archived habits.
         owns = db.execute(
-            "SELECT 1 FROM habits WHERE id = ? AND user_id = ?",
+            "SELECT 1 FROM habits WHERE id = ? AND user_id = ? AND archived = 0",
             (habit_id, user_id)
         ).fetchone()
         if owns is None:

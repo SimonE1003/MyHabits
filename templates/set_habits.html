@@ -10,6 +10,8 @@
         <p class="muted" style="max-width: 540px;">{{ t('set_habits.desc') }}</p>
 
         <form method="post" style="margin-top: 48px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             {% for i in range(6) %}
             <div class="row-habits" style="margin-bottom: 14px;">
                 <input class="input" type="text" name="habit{{ i }}" placeholder="{{ t('set_habits.placeholder') }} {{ i + 1 }}">
@@ -21,6 +23,17 @@
                 </select>
             </div>
             {% endfor %}
+
+            <!-- Timezone selector: determines the user's daily cutoff -->
+            <div class="field" style="margin-top: 32px;">
+                <label>{{ t('set_habits.timezone') }}</label>
+                <select class="select" name="timezone">
+                    {% for tz_value, tz_label in timezones %}
+                    <option value="{{ tz_value }}" {% if tz_value == current_timezone %}selected{% endif %}>{{ tz_label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="muted" style="font-size: 12px; margin-top: 6px;">{{ t('set_habits.timezone_desc') }}</p>
+            </div>
 
             <button type="submit" class="btn btn-primary btn-large"
                     style="margin-top: 32px; width: 100%;"
