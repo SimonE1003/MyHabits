@@ -28,19 +28,25 @@ An Info page explains the protocol, suggests sample habits grounded in science (
 cd "Habit Tracker"
 python3 -m venv venv
 source venv/bin/activate
-pip install flask python-dotenv
+pip install -r requirements.txt
 python app.py
 ```
 
 Then open http://127.0.0.1:5000 in your browser.
+
+For production, use gunicorn (included in requirements.txt):
+```bash
+gunicorn app:app
+```
 
 The AI planner requires a `.env` file with HKU Claude API credentials:
 ```
 HKU_CLAUDE_API_KEY=your-key
 HKU_CLAUDE_ENDPOINT=https://api.hku.hk/claude/student/model
 HKU_CLAUDE_MODEL=claude-haiku-4.5
+SECRET_KEY=your-random-hex-string
 ```
-The app works without it—only the AI planner feature will be unavailable.
+The app works without it—only the AI planner feature will be unavailable. `SECRET_KEY` is needed for persistent sessions; without it, all users are logged out on every restart.
 
 ## Tech Stack
 

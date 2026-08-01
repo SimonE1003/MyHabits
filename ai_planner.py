@@ -21,7 +21,7 @@ load_dotenv()
 API_KEY = os.environ.get("HKU_CLAUDE_API_KEY")
 ENDPOINT = os.environ.get("HKU_CLAUDE_ENDPOINT")
 MODEL = os.environ.get("HKU_CLAUDE_MODEL", "claude-haiku-4.5")
-URL = f"{ENDPOINT}/{MODEL}/converse"
+URL = f"{ENDPOINT}/{MODEL}/converse" if ENDPOINT else None
 
 SHANGHAI_TZ = timezone(timedelta(hours=8))
 

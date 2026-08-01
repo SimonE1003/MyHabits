@@ -118,8 +118,13 @@ def inject_i18n():
 
 @app.route("/set_language", methods=["POST"])
 def set_language():
-    """Switch language. Called via fetch from the nav button."""
-    lang = (request.json or {}).get('lang', 'en')
+    """Switch language. Called via sendBeacon from the nav button."""
+    # sendBeacon sends with Content-Type from the Blob, but some browsers
+    # override to text/plain. Accept both JSON and form data.
+    data = request.get_json(silent=True)
+    if data is None:
+        data = request.form.to_dict()
+    lang = (data or {}).get('lang', 'en')
     if lang not in SUPPORTED_LANGS:
         return jsonify(success=False), 400
     session['lang'] = lang
@@ -145,7 +150,7 @@ def login():
     db = get_db()
 
     if request.method == "POST":
-        username = request.form.get("username", "")
+        username = (request.form.get("username", "") or "").strip()
         password = request.form.get("password", "")
 
         if not username or not password:
@@ -172,7 +177,7 @@ def register():
         return render_template("register.html")
 
     db = get_db()
-    username = request.form.get("username", "")
+    username = (request.form.get("username", "") or "").strip()
     password = request.form.get("password", "")
     confirmation = request.form.get("confirmation", "")
 
@@ -180,6 +185,8 @@ def register():
         return render_template("register.html", error_key="register.error_both", username_value=username), 400
     if confirmation != password:
         return render_template("register.html", error_key="register.error_match", username_value=username), 400
+    if len(username) > 64 or len(password) > 128:
+        return render_template("register.html", error_key="register.error_length", username_value=username), 400
 
     rows = db.execute(
         "SELECT id FROM users WHERE username = ?", (username,)
@@ -259,12 +266,13 @@ def set_habits():
         db = get_db()
 
         # Validate ALL inputs first, before mutating any data.
+        VALID_PHASES = {'morning', 'afternoon', 'evening'}
         new_habits = []
         for i in range(6):
             name = (request.form.get(f"habit{i}") or "").strip()
             phase = request.form.get(f"phase{i}")
             if name:
-                if not phase:
+                if not phase or phase not in VALID_PHASES:
                     return apology(translate("set_habits.error_no_phase", session.get('lang', 'en')))
                 new_habits.append((name, phase))
 
@@ -421,7 +429,17 @@ def mark_done():
     """Mark a habit as done for today. Idempotent: clicking twice does not double-count."""
     db = get_db()
     try:
-        habit_id = request.json.get("habit_id")
+        data = request.get_json(silent=True)
+        if not data or "habit_id" not in data:
+            return jsonify(success=False, message="Invalid request"), 400
+        habit_id = data.get("habit_id")
+        # Validate habit_id is a positive integer (defends against odd input)
+        try:
+            habit_id = int(habit_id)
+            if habit_id <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify(success=False, message="Invalid habit id"), 400
         today = date.today().isoformat()
         user_id = session["user_id"]
 

@@ -93,11 +93,16 @@
         form.style.pointerEvents = 'none';
         result.hidden = true;
 
+        // 90s hard cap — matches the 60s server timeout plus generous margin
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 90000);
+
         try {
             const resp = await fetch('/api/now_plan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bedtime: bedtime })
+                body: JSON.stringify({ bedtime: bedtime }),
+                signal: controller.signal
             });
             const data = await resp.json();
 
@@ -114,8 +119,10 @@
             result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (e) {
             result.hidden = false;
-            result.innerHTML = `<div class="plan-error">${networkErrorLabel}: ${escapeHtml(e.message)}</div>`;
+            const msg = e.name === 'AbortError' ? 'Request timed out' : e.message;
+            result.innerHTML = `<div class="plan-error">${networkErrorLabel}: ${escapeHtml(msg)}</div>`;
         } finally {
+            clearTimeout(timeout);
             btn.disabled = false;
             btn.textContent = btnLabel;
             form.style.opacity = '';

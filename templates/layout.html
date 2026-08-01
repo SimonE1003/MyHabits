@@ -10,7 +10,7 @@
     <nav class="nav">
         <div class="nav-inner">
             <a class="nav-brand" href="{{ url_for('home') }}">{{ t('nav.brand') }}</a>
-            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+            <button type="button" class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                     <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5"/>
                 </svg>
@@ -27,12 +27,12 @@
                     <li><a href="{{ url_for('login') }}">{{ t('auth.login_link') }}</a></li>
                 {% endif %}
                 <li class="lang-switcher" id="langSwitcher">
-                    <button class="lang-btn" id="langBtn" aria-label="{{ t('lang.label') }}">
+                    <button type="button" class="lang-btn" id="langBtn" aria-label="{{ t('lang.label') }}" aria-haspopup="true" aria-expanded="false">
                         {% if lang == 'zh' %}中{% else %}EN{% endif %}
                     </button>
-                    <div class="lang-menu" id="langMenu">
-                        <button class="lang-option {% if lang == 'en' %}active{% endif %}" data-lang="en">English</button>
-                        <button class="lang-option {% if lang == 'zh' %}active{% endif %}" data-lang="zh">中文</button>
+                    <div class="lang-menu" id="langMenu" role="menu">
+                        <button type="button" class="lang-option {% if lang == 'en' %}active{% endif %}" data-lang="en" role="menuitem">English</button>
+                        <button type="button" class="lang-option {% if lang == 'zh' %}active{% endif %}" data-lang="zh" role="menuitem">中文</button>
                     </div>
                 </li>
             </ul>
@@ -49,8 +49,10 @@
 
     <script>
         // Mobile nav toggle
-        document.getElementById('navToggle')?.addEventListener('click', () => {
-            document.getElementById('navLinks').classList.toggle('open');
+        document.getElementById('navToggle')?.addEventListener('click', function() {
+            const links = document.getElementById('navLinks');
+            const isOpen = links.classList.toggle('open');
+            this.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
 
         // Language switcher
@@ -62,27 +64,25 @@
 
             langBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                langSwitcher.classList.toggle('open');
+                const isOpen = langSwitcher.classList.toggle('open');
+                langBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             });
 
             document.addEventListener('click', () => {
                 langSwitcher.classList.remove('open');
+                langBtn.setAttribute('aria-expanded', 'false');
             });
 
             langSwitcher.querySelectorAll('.lang-option').forEach(opt => {
-                opt.addEventListener('click', async (e) => {
+                opt.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const newLang = opt.dataset.lang;
-                    try {
-                        await fetch('/set_language', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ lang: newLang })
-                        });
-                        location.reload();
-                    } catch (err) {
-                        console.error('Language switch failed:', err);
-                    }
+                    // Use sendBeacon so the request survives the page reload.
+                    // fetch() can be aborted by the subsequent reload, causing
+                    // a spurious ERR_ABORTED in the console.
+                    const blob = new Blob([JSON.stringify({ lang: newLang })], { type: 'application/json' });
+                    navigator.sendBeacon('/set_language', blob);
+                    location.reload();
                 });
             });
         })();

@@ -71,11 +71,15 @@
 
     document.querySelectorAll('.mark-done').forEach(btn => {
         btn.addEventListener('click', async function() {
+            // Prevent double-clicks / concurrent requests on the same button
+            if (this.disabled) return;
             if (!confirm("{{ t('today.confirm_done') }}")) return;
 
             const habitId = this.dataset.habitId;
             const habitItem = this.closest('.habit-item') || this.closest('.habit-row');
             const doneLabel = "{{ t('today.done') }}";
+
+            this.disabled = true;
 
             try {
                 const response = await fetch('{{ url_for("mark_done") }}', {
@@ -91,16 +95,21 @@
                     this.textContent = doneLabel;
                     if (habitItem) habitItem.classList.add('done');
 
-                    // Update phase count and auto-collapse when complete
-                    const phaseEl = habitItem.closest('.phase-group');
-                    const countEl = phaseEl?.querySelector('.count');
+                    // Update phase count and auto-collapse when complete.
+                    // Guard against null matches and non-numeric text.
+                    const phaseEl = habitItem ? habitItem.closest('.phase-group') : null;
+                    const countEl = phaseEl ? phaseEl.querySelector('.count') : null;
                     if (countEl && phaseEl) {
-                        const [done, total] = countEl.textContent.match(/\d+/g).map(Number);
-                        const newDone = Math.min(done + 1, total);
-                        countEl.textContent = `${newDone} / ${total} ${doneLabel}`;
-                        if (newDone === total) {
-                            // Small delay so the user sees the final habit turn to "Done"
-                            setTimeout(() => phaseEl.classList.add('collapsed'), 350);
+                        const nums = countEl.textContent.match(/\d+/g);
+                        if (nums && nums.length >= 2) {
+                            const done = parseInt(nums[0], 10);
+                            const total = parseInt(nums[1], 10);
+                            const newDone = Math.min(done + 1, total);
+                            countEl.textContent = `${newDone} / ${total} ${doneLabel}`;
+                            if (newDone === total) {
+                                // Small delay so the user sees the final habit turn to "Done"
+                                setTimeout(() => phaseEl.classList.add('collapsed'), 350);
+                            }
                         }
                     }
                 } else {
@@ -109,6 +118,12 @@
             } catch (error) {
                 console.error("Error:", error);
                 alert("{{ t('today.network_error') }}");
+            } finally {
+                // Re-enable only if the request failed (success path sets
+                // pointer-events: none via .completed class).
+                if (!this.classList.contains('completed')) {
+                    this.disabled = false;
+                }
             }
         });
     });

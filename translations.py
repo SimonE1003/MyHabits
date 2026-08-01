@@ -35,6 +35,7 @@ TRANSLATIONS = {
     'register.error_both':    {'en': 'Please enter both username and password.',  'zh': '请输入用户名和密码。'},
     'register.error_match':   {'en': "Those passwords don't match.",              'zh': '两次密码不一致。'},
     'register.error_taken':   {'en': 'That username is already taken.',           'zh': '该用户名已被占用。'},
+    'register.error_length':  {'en': 'Username or password is too long.',         'zh': '用户名或密码过长。'},
 
     # ---- Today page (empty / not started) ----
     'today.empty_eyebrow': {'en': 'No active challenge',  'zh': '暂未开始挑战'},
