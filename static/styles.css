@@ -1008,20 +1008,22 @@ a:hover { color: var(--text); }
     margin-bottom: 4px;
 }
 .cal-dow-spacer {
-    width: 28px;
+    width: 32px; /* 28px dow column + 4px cal-body gap */
     flex-shrink: 0;
 }
 .cal-months-track {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 16px; /* 13px cell + 3px gap */
+    position: relative;
+    height: 18px;
     width: max-content;
 }
 .cal-month-label {
+    position: absolute;
+    top: 0;
     font-size: 10px;
     color: var(--text-faint);
     letter-spacing: 0.02em;
     white-space: nowrap;
+    line-height: 18px;
 }
 
 /* Body: weekday labels + weeks */
