@@ -237,13 +237,32 @@ TRANSLATIONS = {
     'stats.dim_streak':     {'en': 'Streak',         'zh': '连续性'},
 
     # Heatmap
-    'stats.heatmap_title': {'en': 'Activity calendar', 'zh': '活动日历'},
+    'stats.heatmap_title': {'en': 'Completion Calendar', 'zh': '完成日历'},
     'stats.heatmap_desc':  {
         'en': 'Each square is a day. Darker means more habits completed.',
         'zh': '每个方块代表一天。颜色越深表示完成的习惯越多。'
     },
     'stats.less':          {'en': 'Less',  'zh': '少'},
     'stats.more':          {'en': 'More',  'zh': '多'},
+
+    # Month labels (Jan..Dec)
+    'stats.month_1':  {'en': 'Jan', 'zh': '1月'},
+    'stats.month_2':  {'en': 'Feb', 'zh': '2月'},
+    'stats.month_3':  {'en': 'Mar', 'zh': '3月'},
+    'stats.month_4':  {'en': 'Apr', 'zh': '4月'},
+    'stats.month_5':  {'en': 'May', 'zh': '5月'},
+    'stats.month_6':  {'en': 'Jun', 'zh': '6月'},
+    'stats.month_7':  {'en': 'Jul', 'zh': '7月'},
+    'stats.month_8':  {'en': 'Aug', 'zh': '8月'},
+    'stats.month_9':  {'en': 'Sep', 'zh': '9月'},
+    'stats.month_10': {'en': 'Oct', 'zh': '10月'},
+    'stats.month_11': {'en': 'Nov', 'zh': '11月'},
+    'stats.month_12': {'en': 'Dec', 'zh': '12月'},
+
+    # Day-of-week labels (Mon, Wed, Fri — shown on left axis)
+    'stats.dow_mon': {'en': 'Mon', 'zh': '一'},
+    'stats.dow_wed': {'en': 'Wed', 'zh': '三'},
+    'stats.dow_fri': {'en': 'Fri', 'zh': '五'},
 
     # Rounds
     'stats.rounds_title':  {'en': 'Challenge history', 'zh': '挑战历史'},

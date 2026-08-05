@@ -283,6 +283,12 @@ def compute_user_stats(db, user_id, user_tz=None):
 
     has_enough_data = main_round["days_elapsed"] >= 3
 
+    # ---- Year-scoped heatmap for the GitHub-style calendar ----
+    # The user can browse by year; default to the current year.
+    earliest_year = first_start.year
+    current_year = today.year
+    available_years = list(range(earliest_year, current_year + 1))
+
     return {
         "score": main_round["score"],
         "dimensions": main_round["dimensions"],
@@ -301,4 +307,84 @@ def compute_user_stats(db, user_id, user_tz=None):
             "end": today.isoformat(),
         },
         "has_enough_data": has_enough_data,
+        "calendar": _build_year_calendar(
+            daily_map, available_years, current_year, today
+        ),
+    }
+
+
+def _build_year_calendar(daily_map, available_years, selected_year, today):
+    """Build GitHub-style calendar data for one year.
+
+    Returns:
+        {
+            "available_years": [2024, 2025, ...],
+            "selected_year": 2026,
+            "months": [{label, offset_weeks}, ...],  # top labels
+            "weeks": [[cell, ...], ...],              # 7 rows × N week columns
+        }
+    """
+    from datetime import date as _date
+
+    year = selected_year
+    jan1 = _date(year, 1, 1)
+    dec31 = _date(year, 12, 31)
+    # Start from the Monday on or before Jan 1.
+    start = jan1 - timedelta(days=jan1.weekday())
+    end = dec31
+
+    # Cap future dates at today (don't render cells for days that
+    # haven't happened yet).
+    render_end = min(end, today) if year == today.year else end
+
+    # Build week columns (each column = Mon..Sun).
+    weeks = []
+    d = start
+    while d <= render_end:
+        col = []
+        for _ in range(7):
+            if d > render_end:
+                col.append({"date": d.isoformat(), "is_future": True})
+            else:
+                d_str = d.isoformat()
+                info = daily_map.get(d_str)
+                if info and info["total"] > 0:
+                    ratio = info["done"] / info["total"]
+                    col.append({
+                        "date": d_str,
+                        "done": info["done"],
+                        "total": info["total"],
+                        "ratio": ratio,
+                        "is_placeholder": False,
+                    })
+                else:
+                    col.append({
+                        "date": d_str,
+                        "done": 0,
+                        "total": 0,
+                        "ratio": 0,
+                        "is_placeholder": True,
+                    })
+            d += timedelta(days=1)
+        weeks.append(col)
+
+    # Month labels positioned by week-column offset.
+    # GitHub renders the month name above the first week whose first
+    # day belongs to that month.
+    months = []
+    if weeks:
+        last_month = -1
+        for i, week in enumerate(weeks):
+            # Use the first non-future day in the week to decide the month.
+            ref = week[0]
+            m = _date.fromisoformat(ref["date"]).month
+            if m != last_month and not ref.get("is_future"):
+                months.append({"label": m, "offset": i})
+                last_month = m
+
+    return {
+        "available_years": available_years,
+        "selected_year": selected_year,
+        "months": months,
+        "weeks": weeks,
     }

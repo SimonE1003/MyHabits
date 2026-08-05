@@ -588,7 +588,8 @@ def stats():
     """Show discipline metrics and a calendar heatmap of the user's history.
 
     Pulls data from all challenge rounds (active + archived) so the user
-    sees their full trajectory, not just the current round.
+    sees their full trajectory, not just the current round. The activity
+    calendar supports year browsing via ?year=.
     """
     user_id = session["user_id"]
     user_tz = get_user_timezone(user_id)
@@ -598,6 +599,23 @@ def stats():
     if data is None:
         # No habits at all → same empty state as /today
         return render_template("stats.html", has_data=False)
+
+    # Honor ?year= for the activity calendar. Validate against
+    # available_years so users can't browse before their account existed.
+    cal = data["calendar"]
+    try:
+        year = int(request.args.get("year", cal["selected_year"]))
+    except (TypeError, ValueError):
+        year = cal["selected_year"]
+    if year != cal["selected_year"]:
+        if year in cal["available_years"]:
+            from stats import _build_year_calendar
+            from datetime import date as _date
+            today = _date.today()
+            cal = _build_year_calendar(
+                data["heatmap"], cal["available_years"], year, today
+            )
+            data["calendar"] = cal
 
     return render_template("stats.html", has_data=True, stats=data)
 

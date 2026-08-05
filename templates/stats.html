@@ -150,32 +150,72 @@
         </div>
         {% endif %}
 
-        <!-- 5. Activity calendar (GitHub-style commit graph) -->
+        <!-- 5. Completion Calendar (GitHub-style commit graph) -->
         <div class="heatmap-section" style="margin-top: 56px;">
-            <h3 style="font-family: var(--font-display); font-size: 18px; margin-bottom: 24px;">{{ t('stats.heatmap_title') }}</h3>
-            <div class="heatmap-wrap">
-                <div class="heatmap-grid" id="heatmapGrid">
-                    {% for cell in stats.heatmap_cells %}
-                        {% if cell.is_placeholder %}
-                            <div class="heat-cell empty"></div>
-                        {% else %}
-                            {% if cell.ratio == 0 %}
-                                {% set level = 0 %}
-                            {% elif cell.ratio < 0.34 %}
-                                {% set level = 1 %}
-                            {% elif cell.ratio < 0.67 %}
-                                {% set level = 2 %}
-                            {% elif cell.ratio < 1 %}
-                                {% set level = 3 %}
-                            {% else %}
-                                {% set level = 4 %}
-                            {% endif %}
-                            <div class="heat-cell level-{{ level }}"
-                                 title="{{ cell.date }}: {{ cell.done }}/{{ cell.total }}"
-                                 data-date="{{ cell.date }}">
-                            </div>
-                        {% endif %}
+            <div class="heatmap-header">
+                <h3 style="font-family: var(--font-display); font-size: 18px; margin: 0;">{{ t('stats.heatmap_title') }}</h3>
+                <div class="year-switcher">
+                    {% for yr in stats.calendar.available_years %}
+                    <a href="{{ url_for('stats', year=yr) }}"
+                       class="year-btn {% if yr == stats.calendar.selected_year %}active{% endif %}">{{ yr }}</a>
                     {% endfor %}
+                </div>
+            </div>
+
+            <div class="heatmap-wrap" style="margin-top: 20px;">
+                <div class="cal-scroll">
+                    <!-- Month labels row -->
+                    <div class="cal-months">
+                        <div class="cal-dow-spacer"></div>
+                        <div class="cal-months-track">
+                            {% for m in stats.calendar.months %}
+                            <span class="cal-month-label" style="grid-column: {{ m.offset + 1 }};">{{ t('stats.month_' ~ m.label) }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Main grid: weekday labels + week columns -->
+                    <div class="cal-body">
+                        <div class="cal-dow">
+                            <span class="cal-dow-label"></span>
+                            <span class="cal-dow-label">{{ t('stats.dow_mon') }}</span>
+                            <span class="cal-dow-label"></span>
+                            <span class="cal-dow-label">{{ t('stats.dow_wed') }}</span>
+                            <span class="cal-dow-label"></span>
+                            <span class="cal-dow-label">{{ t('stats.dow_fri') }}</span>
+                            <span class="cal-dow-label"></span>
+                        </div>
+                        <div class="cal-weeks">
+                            {% for week in stats.calendar.weeks %}
+                            <div class="cal-week">
+                                {% for cell in week %}
+                                    {% if cell.is_future is defined and cell.is_future %}
+                                        <div class="heat-cell future"></div>
+                                    {% elif cell.is_placeholder %}
+                                        <div class="heat-cell empty"
+                                             title="{{ cell.date }}"></div>
+                                    {% else %}
+                                        {% if cell.ratio == 0 %}
+                                            {% set level = 0 %}
+                                        {% elif cell.ratio < 0.34 %}
+                                            {% set level = 1 %}
+                                        {% elif cell.ratio < 0.67 %}
+                                            {% set level = 2 %}
+                                        {% elif cell.ratio < 1 %}
+                                            {% set level = 3 %}
+                                        {% else %}
+                                            {% set level = 4 %}
+                                        {% endif %}
+                                        <div class="heat-cell level-{{ level }}"
+                                             title="{{ cell.date }}: {{ cell.done }}/{{ cell.total }}"
+                                             data-date="{{ cell.date }}">
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="heatmap-legend">
