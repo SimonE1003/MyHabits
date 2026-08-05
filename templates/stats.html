@@ -151,7 +151,7 @@
         {% endif %}
 
         <!-- 5. Completion Calendar (GitHub-style commit graph) -->
-        <div class="heatmap-section" style="margin-top: 56px;">
+        <div class="heatmap-section" id="completion-calendar" style="margin-top: 56px;">
             <div class="heatmap-header">
                 <h3 style="font-family: var(--font-display); font-size: 18px; margin: 0;">{{ t('stats.heatmap_title') }}</h3>
                 <div class="year-switcher">
@@ -233,4 +233,34 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+(function () {
+    const section = document.getElementById('completion-calendar');
+    if (!section) return;
+
+    section.addEventListener('click', async function (e) {
+        const btn = e.target.closest('.year-btn');
+        if (!btn) return;
+        e.preventDefault();
+        const url = btn.getAttribute('href');
+        if (btn.classList.contains('active')) return;
+
+        try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' } });
+            if (!res.ok) return;
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newSection = doc.getElementById('completion-calendar');
+            if (newSection) {
+                section.innerHTML = newSection.innerHTML;
+                history.replaceState(null, '', url);
+            }
+        } catch (err) {
+            // Network error — fall back to full navigation
+            window.location.href = url;
+        }
+    });
+})();
+</script>
 {% endblock %}
