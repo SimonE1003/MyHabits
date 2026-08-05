@@ -789,6 +789,25 @@ a:hover { color: var(--text); }
     font-style: italic;
 }
 
+/* Round-ended call-to-action */
+.round-ended-cta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 18px 24px;
+    background: var(--accent-glow);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+}
+.round-ended-note {
+    font-family: var(--font-display);
+    font-size: 16px;
+    color: var(--text);
+    flex: 1;
+    min-width: 200px;
+}
+
 /* Dimension cards */
 .dim-grid {
     display: grid;

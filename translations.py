@@ -219,6 +219,7 @@ TRANSLATIONS = {
     'stats.pts':           {'en': 'pts',             'zh': '分'},
     'stats.insufficient':  {'en': 'Not enough data yet — keep going for a meaningful score.', 'zh': '数据不足——继续坚持才能得到有意义的分数。'},
     'stats.round_ended':   {'en': 'This round has ended.', 'zh': '本轮挑战已结束。'},
+    'stats.start_new_cta': {'en': 'Start a new 21-day challenge', 'zh': '开始新一轮 21 天挑战'},
 
     # Score levels
     'stats.level_master':       {'en': 'Mastery',          'zh': '精通'},
