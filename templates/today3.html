@@ -19,7 +19,8 @@
             {% endfor %}
         </div>
 
-        <!-- Tips -->
+        <!-- Tips: only on the user's first completed cycle -->
+        {% if first_cycle %}
         <div style="margin-top: 56px;">
             <h4 style="font-family: var(--font-body); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px;">{{ t('today3.tip_title') }}</h4>
             <ul style="color: var(--text-muted); line-height: 1.7; padding-left: 20px;">
@@ -28,6 +29,7 @@
                 <li style="margin-bottom: 8px;">{{ t('today3.tip3') }}</li>
             </ul>
         </div>
+        {% endif %}
 
         {% if challenge_finished %}
         <a href="{{ url_for('set_habits') }}" class="btn btn-primary btn-large"

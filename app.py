@@ -312,7 +312,17 @@ def today():
 
     if current_day > 21:
         # Challenge finished: show the report + link to start a new round.
-        return render_template("today3.html", habits=habits, challenge_finished=True)
+        # first_cycle = the just-finished round is the user's only round ever.
+        max_round = db.execute(
+            "SELECT MAX(challenge_round) AS m FROM habits WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()["m"]
+        return render_template(
+            "today3.html",
+            habits=habits,
+            challenge_finished=True,
+            first_cycle=(max_round == 1),
+        )
 
     random_quote_key = random.choice(QUOTE_KEYS)
 

@@ -66,7 +66,7 @@ TRANSLATIONS = {
         'en': 'Below is your completion record. Use it to see which habits are forming strongly and which need another cycle.',
         'zh': '以下是你的完成记录。看看哪些习惯已经稳固，哪些还需要再来一轮。'
     },
-    'today3.tip_title':    {'en': 'If this is your first cycle', 'zh': '如果是你的第一个周期'},
+    'today3.tip_title':    {'en': 'Since this is your first cycle, here are some info on going forward', 'zh': '既然这是你的第一个周期，这里有一些后续建议'},
     'today3.tip1':         {'en': 'Consider taking the next 21 days to track the same six habits.', 'zh': '考虑用接下来的 21 天继续追踪同样的六个习惯。'},
     'today3.tip2':         {'en': 'This reveals which habits are forming strongly and which are not.', 'zh': '这样可以看出哪些习惯已稳固，哪些还不够。'},
     'today3.tip3':         {'en': 'Use the report to swap one strong habit for a new one you want to form.', 'zh': '根据报告，用一个已稳固的习惯换一个想培养的新习惯。'},
