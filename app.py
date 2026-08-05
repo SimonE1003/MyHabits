@@ -23,13 +23,8 @@ SHANGHAI_TZ = timezone(timedelta(hours=8))
 # (IANA name, display label) — label is city + UTC offset, language-neutral.
 SUPPORTED_TIMEZONES = [
     ('Asia/Shanghai',        '北京/上海 (UTC+8)'),
-    ('Asia/Hong_Kong',       '香港 (UTC+8)'),
-    ('Asia/Tokyo',           '东京 (UTC+9)'),
-    ('Asia/Singapore',       '新加坡 (UTC+8)'),
-    ('America/Los_Angeles',  'Los Angeles (UTC-8)'),
-    ('America/New_York',     'New York (UTC-5)'),
     ('Europe/London',        'London (UTC+0)'),
-    ('UTC',                  'UTC'),
+    ('America/Montreal',     'Montreal (UTC-5)'),
 ]
 SUPPORTED_TIMEZONE_NAMES = {tz for tz, _ in SUPPORTED_TIMEZONES}
 

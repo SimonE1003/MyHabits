@@ -39,9 +39,13 @@
             <div class="score-meta">
                 <div class="score-level">{{ t(stats.level_key) }}</div>
                 <div class="score-sub">
+                    {{ t('stats.round') }} {{ stats.round_number }} ·
                     {{ stats.total_completions }} {{ t('stats.completions') }} ·
                     {{ stats.longest_streak }} {{ t('stats.day_streak') }}
                 </div>
+                {% if not stats.round_is_active %}
+                <div class="score-note">{{ t('stats.round_ended') }}</div>
+                {% endif %}
                 {% if not stats.has_enough_data %}
                 <div class="score-note">{{ t('stats.insufficient') }}</div>
                 {% endif %}
@@ -53,26 +57,31 @@
             <div class="dim-card">
                 <div class="dim-label">{{ t('stats.dim_completion') }}</div>
                 <div class="dim-value">{{ stats.dimensions.completion_rate_pct }}%</div>
-                <div class="dim-bar"><div class="dim-fill" style="width: {{ stats.dimensions.completion_rate_pct }}%"></div></div>
-                <div class="dim-pts">{{ stats.dimensions.completion }} / {{ stats.dimensions.completion_max }} {{ t('stats.pts') }}</div>
+                <div class="dim-bar"><div class="dim-fill" style="width: {{ (stats.dimensions.completion / stats.dimensions.completion_max) * 100 }}%"></div></div>
+                <div class="dim-pts">
+                    {{ stats.dimensions.completion }} / {{ stats.dimensions.completion_max }} {{ t('stats.pts') }}
+                    · {{ stats.dimensions.full_days }}/{{ stats.dimensions.days_elapsed }} {{ t('stats.full_days') }}
+                </div>
             </div>
             <div class="dim-card">
                 <div class="dim-label">{{ t('stats.dim_streak') }}</div>
-                <div class="dim-value">{{ stats.longest_streak }} {{ t('stats.days') }}</div>
+                <div class="dim-value">{{ stats.dimensions.longest_streak }} {{ t('stats.days') }}</div>
                 <div class="dim-bar"><div class="dim-fill" style="width: {{ (stats.dimensions.streak / stats.dimensions.streak_max) * 100 }}%"></div></div>
                 <div class="dim-pts">{{ stats.dimensions.streak }} / {{ stats.dimensions.streak_max }} {{ t('stats.pts') }}</div>
             </div>
-            <div class="dim-card">
-                <div class="dim-label">{{ t('stats.dim_recovery') }}</div>
-                <div class="dim-value">{{ stats.full_days }} / {{ stats.active_days }} {{ t('stats.full_days') }}</div>
-                <div class="dim-bar"><div class="dim-fill" style="width: {{ (stats.dimensions.recovery / stats.dimensions.recovery_max) * 100 }}%"></div></div>
-                <div class="dim-pts">{{ stats.dimensions.recovery }} / {{ stats.dimensions.recovery_max }} {{ t('stats.pts') }}</div>
-            </div>
-            <div class="dim-card">
-                <div class="dim-label">{{ t('stats.dim_momentum') }}</div>
-                <div class="dim-value">{{ stats.dimensions.momentum }} / {{ stats.dimensions.momentum_max }}</div>
-                <div class="dim-bar"><div class="dim-fill" style="width: {{ (stats.dimensions.momentum / stats.dimensions.momentum_max) * 100 }}%"></div></div>
-                <div class="dim-pts">{{ t('stats.last_7_vs_prev') }}</div>
+        </div>
+
+        <!-- Level thresholds table -->
+        <div class="level-table-wrap" style="margin-top: 40px;">
+            <h3 style="font-family: var(--font-body); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 16px;">{{ t('stats.level_thresholds') }}</h3>
+            <div class="level-table">
+                {% for threshold, key, range in stats.level_thresholds %}
+                <div class="level-row {% if stats.level_key == key %}current{% endif %}">
+                    <span class="level-range">{{ range }}</span>
+                    <span class="level-name">{{ t(key) }}</span>
+                    {% if stats.level_key == key %}<span class="level-mark">{{ t('stats.you_are_here') }}</span>{% endif %}
+                </div>
+                {% endfor %}
             </div>
         </div>
 
@@ -129,9 +138,15 @@
                         <span class="round-num">{{ t('stats.round') }} {{ rnd.round }}</span>
                         {% if rnd.is_active %}<span class="round-badge">{{ t('stats.current') }}</span>{% endif %}
                     </div>
-                    <div class="round-rate">{{ (rnd.completion_rate * 100) | round }}%</div>
+                    <div class="round-score-block">
+                        <span class="round-score-num">{{ rnd.score }}</span>
+                        <span class="round-score-level">{{ t(rnd.level_key) }}</span>
+                    </div>
+                    <div class="round-rate">{{ (rnd.completion_rate * 100) | round }}% {{ t('stats.completion') }}</div>
                     <div class="round-meta">
-                        {{ rnd.total_completions }} / {{ rnd.habit_count * rnd.days_elapsed }} {{ t('stats.completions') }}
+                        {{ rnd.total_completions }} / {{ rnd.total_expected }} {{ t('stats.completions') }}
+                        · {{ rnd.full_days }} {{ t('stats.full_days') }}
+                        · {{ rnd.longest_streak }} {{ t('stats.day_streak') }}
                     </div>
                     <div class="round-bar">
                         <div class="round-fill" style="width: {{ (rnd.completion_rate * 100) | round }}%"></div>

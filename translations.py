@@ -208,15 +208,17 @@ TRANSLATIONS = {
     'stats.eyebrow':       {'en': 'Your trajectory', 'zh': '你的轨迹'},
     'stats.lede':          {'en': 'How you are building yourself.', 'zh': '你正在如何塑造自己。'},
     'stats.desc':          {
-        'en': 'A multi-dimensional view of your discipline across all challenge rounds.',
-        'zh': '跨越所有挑战轮次的执行力多维度视图。'
+        'en': 'Your discipline score for the current 21-day round. It resets each round — aim to beat your past self.',
+        'zh': '当前 21 天挑战轮次的执行力评分。每轮重置——目标是超越过去的自己。'
     },
     'stats.completions':   {'en': 'completions',     'zh': '次完成'},
+    'stats.completion':    {'en': 'completion',      'zh': '完成率'},
     'stats.day_streak':    {'en': 'day streak',      'zh': '天连续'},
     'stats.days':          {'en': 'days',            'zh': '天'},
     'stats.full_days':     {'en': 'full days',       'zh': '全勤天'},
     'stats.pts':           {'en': 'pts',             'zh': '分'},
     'stats.insufficient':  {'en': 'Not enough data yet — keep going for a meaningful score.', 'zh': '数据不足——继续坚持才能得到有意义的分数。'},
+    'stats.round_ended':   {'en': 'This round has ended.', 'zh': '本轮挑战已结束。'},
 
     # Score levels
     'stats.level_master':       {'en': 'Mastery',          'zh': '精通'},
@@ -225,12 +227,13 @@ TRANSLATIONS = {
     'stats.level_building':     {'en': 'Building',         'zh': '建设中'},
     'stats.level_beginning':    {'en': 'Beginning',        'zh': '起步'},
 
+    # Level thresholds table
+    'stats.level_thresholds': {'en': 'Levels',         'zh': '等级'},
+    'stats.you_are_here':     {'en': 'you are here',   'zh': '你在这里'},
+
     # Dimensions
     'stats.dim_completion': {'en': 'Completion',     'zh': '完成率'},
     'stats.dim_streak':     {'en': 'Streak',         'zh': '连续性'},
-    'stats.dim_recovery':   {'en': 'Recovery',       'zh': '恢复力'},
-    'stats.dim_momentum':   {'en': 'Momentum',       'zh': '趋势'},
-    'stats.last_7_vs_prev': {'en': 'Last 7 vs prior 7', 'zh': '近7天 vs 前7天'},
 
     # Heatmap
     'stats.heatmap_title': {'en': 'Activity calendar', 'zh': '活动日历'},

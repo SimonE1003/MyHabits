@@ -792,11 +792,12 @@ a:hover { color: var(--text); }
 /* Dimension cards */
 .dim-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
+    max-width: 560px;
 }
 @media (max-width: 720px) {
-    .dim-grid { grid-template-columns: repeat(2, 1fr); }
+    .dim-grid { grid-template-columns: 1fr; }
 }
 .dim-card {
     background: var(--surface);
@@ -834,6 +835,67 @@ a:hover { color: var(--text); }
     font-size: 11px;
     color: var(--text-faint);
     letter-spacing: 0.04em;
+}
+
+/* Level thresholds table */
+.level-table {
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 360px;
+}
+.level-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 13px;
+    transition: background var(--dur) var(--ease);
+}
+.level-row:last-child { border-bottom: 0; }
+.level-row.current {
+    background: var(--accent-glow);
+}
+.level-range {
+    font-family: var(--font-body);
+    color: var(--text-faint);
+    font-size: 12px;
+    min-width: 64px;
+    letter-spacing: 0.02em;
+}
+.level-row.current .level-range { color: var(--text-muted); }
+.level-name {
+    font-family: var(--font-display);
+    color: var(--text-muted);
+    flex: 1;
+}
+.level-row.current .level-name { color: var(--accent); }
+.level-mark {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+/* Per-round score block (inside round-card) */
+.round-score-block {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+.round-score-num {
+    font-family: var(--font-display);
+    font-size: 36px;
+    line-height: 1;
+    color: var(--text);
+}
+.round-card.active .round-score-num { color: var(--accent); }
+.round-score-level {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
 }
 
 /* Calendar heatmap (GitHub-style) */
@@ -920,8 +982,8 @@ a:hover { color: var(--text); }
 }
 .round-rate {
     font-family: var(--font-display);
-    font-size: 28px;
-    color: var(--text);
+    font-size: 18px;
+    color: var(--text-muted);
     margin-bottom: 4px;
 }
 .round-meta {
