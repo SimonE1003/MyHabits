@@ -369,18 +369,25 @@ def _build_year_calendar(daily_map, available_years, selected_year, today):
         weeks.append(col)
 
     # Month labels positioned by week-column offset.
-    # GitHub renders the month name above the first week whose first
-    # day belongs to that month.
+    # Only consider days within the selected year, so that a late-December
+    # tail from the previous year doesn't push January's label to the right.
+    # January's label lands on the week containing Jan 1, even if that week
+    # starts on a Monday in late December.
     months = []
     if weeks:
         last_month = -1
         for i, week in enumerate(weeks):
-            # Use the first non-future day in the week to decide the month.
-            ref = week[0]
-            m = _date.fromisoformat(ref["date"]).month
-            if m != last_month and not ref.get("is_future"):
-                months.append({"label": m, "offset": i})
-                last_month = m
+            for cell in week:
+                if cell.get("is_future"):
+                    continue
+                d = _date.fromisoformat(cell["date"])
+                if d.year != year:
+                    continue
+                m = d.month
+                if m != last_month:
+                    months.append({"label": m, "offset": i})
+                    last_month = m
+                break
 
     return {
         "available_years": available_years,

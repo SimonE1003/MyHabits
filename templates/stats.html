@@ -169,7 +169,7 @@
                         <div class="cal-dow-spacer"></div>
                         <div class="cal-months-track">
                             {% for m in stats.calendar.months %}
-                            <span class="cal-month-label" style="grid-column: {{ m.offset + 1 }};">{{ t('stats.month_' ~ m.label) }}</span>
+                            <span class="cal-month-label" style="grid-column: {{ m.offset + 1 }}; grid-row: 1;">{{ t('stats.month_' ~ m.label) }}</span>
                             {% endfor %}
                         </div>
                     </div>
