@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block title %} · {{ t('nav.account') }}{% endblock %}
+
+{% block main %}
+<div class="page">
+    <div class="shell" style="max-width: 460px;">
+        <div class="eyebrow">{{ t('account.eyebrow') }}</div>
+        <h1 class="lede">{{ t('account.lede') }}</h1>
+        <p class="muted" style="max-width: 540px;">{{ t('account.desc') }}</p>
+
+        {% if error_key %}
+        <div class="inline-error" role="alert">
+            <span class="inline-error-mark" aria-hidden="true">!</span>
+            <span>{{ t(error_key) }}</span>
+        </div>
+        {% endif %}
+
+        <form method="post" style="margin-top: 40px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Username is read-only — shown for context, not editable. -->
+            <div class="field">
+                <label>{{ t('account.username') }}</label>
+                <input class="input" type="text" value="{{ current_username }}" disabled>
+            </div>
+
+            <div class="field">
+                <label>{{ t('account.current_password') }}</label>
+                <input class="input" type="password" name="current_password"
+                       placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                       autocomplete="current-password" required>
+            </div>
+
+            <div class="field">
+                <label>{{ t('account.new_password') }}</label>
+                <input class="input" type="password" name="new_password"
+                       placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                       autocomplete="new-password" required>
+            </div>
+
+            <div class="field">
+                <label>{{ t('account.confirm_password') }}</label>
+                <input class="input" type="password" name="confirm_password"
+                       placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                       autocomplete="new-password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-large"
+                    style="margin-top: 24px; width: 100%;">
+                {{ t('account.btn') }}
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

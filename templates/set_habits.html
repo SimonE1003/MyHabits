@@ -37,7 +37,7 @@
 
             <button type="submit" class="btn btn-primary btn-large"
                     style="margin-top: 32px; width: 100%;"
-                    onclick="return confirm('{{ t('set_habits.confirm') }}')">
+                    onclick="return confirm({{ (t('set_habits.confirm_active') if is_challenge_active else t('set_habits.confirm')) | tojson }})">
                 {{ t('set_habits.btn') }}
             </button>
         </form>

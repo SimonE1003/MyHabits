@@ -5,17 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MyHabits{% block title %}{% endblock %}</title>
-    <link href="{{ url_for('static', filename='styles.css') }}?v=20260802b" rel="stylesheet">
+    <link href="{{ url_for('static', filename='styles.css') }}?v=20260806c" rel="stylesheet">
 </head>
 <body>
     <nav class="nav">
         <div class="nav-inner">
             <a class="nav-brand" href="{{ url_for('home') }}">{{ t('nav.brand') }}</a>
-            <button type="button" class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-            </button>
             <ul class="nav-links" id="navLinks">
                 {% if session["user_id"] %}
                     <li><a href="{{ url_for('today') }}" class="{% if request.endpoint == 'today' %}active{% endif %}">{{ t('nav.today') }}</a></li>
@@ -23,69 +18,64 @@
                     <li><a href="{{ url_for('now') }}" class="{% if request.endpoint == 'now' %}active{% endif %}">{{ t('nav.now') }}</a></li>
                     <li><a href="{{ url_for('stats') }}" class="{% if request.endpoint == 'stats' %}active{% endif %}">{{ t('nav.stats') }}</a></li>
                     <li><a href="{{ url_for('info') }}" class="{% if request.endpoint == 'info' %}active{% endif %}">{{ t('nav.info') }}</a></li>
-                    <li><a href="{{ url_for('logout') }}" onclick="return confirm('{{ t('logout.confirm') }}');">{{ t('nav.logout') }}</a></li>
+                    <li><a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">{{ t('nav.settings') }}</a></li>
                 {% else %}
                     <li><a href="{{ url_for('register') }}">{{ t('auth.register_btn') }}</a></li>
                     <li><a href="{{ url_for('login') }}">{{ t('auth.login_link') }}</a></li>
                 {% endif %}
-                <li class="lang-switcher" id="langSwitcher">
-                    <button type="button" class="lang-btn" id="langBtn" aria-label="{{ t('lang.label') }}" aria-haspopup="true" aria-expanded="false">
-                        {% if lang == 'zh' %}中{% else %}EN{% endif %}
-                    </button>
-                    <div class="lang-menu" id="langMenu" role="menu">
-                        <button type="button" class="lang-option {% if lang == 'en' %}active{% endif %}" data-lang="en" role="menuitem">English</button>
-                        <button type="button" class="lang-option {% if lang == 'zh' %}active{% endif %}" data-lang="zh" role="menuitem">中文</button>
-                    </div>
-                </li>
             </ul>
+            <button type="button" class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+            </button>
         </div>
     </nav>
+    <!-- Backdrop: closes mobile menu when tapped outside -->
+    <div class="nav-backdrop" id="navBackdrop"></div>
 
     <main>
         {% block main %}{% endblock %}
     </main>
 
     <footer class="footer">
-        Simon Wang &middot; MyHabits
+        <div class="footer-inner">
+            <span class="footer-brand">Simon Wang &middot; MyHabits</span>
+        </div>
     </footer>
 
     <script>
-        // Mobile nav toggle
-        document.getElementById('navToggle')?.addEventListener('click', function() {
-            const links = document.getElementById('navLinks');
-            const isOpen = links.classList.toggle('open');
-            this.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        });
-
-        // Language switcher
+        // Mobile nav toggle + backdrop close
         (function () {
-            const langBtn = document.getElementById('langBtn');
-            const langSwitcher = document.getElementById('langSwitcher');
+            const toggle = document.getElementById('navToggle');
+            const links = document.getElementById('navLinks');
+            const backdrop = document.getElementById('navBackdrop');
+            if (!toggle || !links || !backdrop) return;
 
-            if (!langBtn || !langSwitcher) return;
+            function openNav() {
+                links.classList.add('open');
+                backdrop.classList.add('show');
+                toggle.setAttribute('aria-expanded', 'true');
+            }
+            function closeNav() {
+                links.classList.remove('open');
+                backdrop.classList.remove('show');
+                toggle.setAttribute('aria-expanded', 'false');
+            }
 
-            langBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const isOpen = langSwitcher.classList.toggle('open');
-                langBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            toggle.addEventListener('click', function () {
+                if (links.classList.contains('open')) closeNav();
+                else openNav();
             });
 
-            document.addEventListener('click', () => {
-                langSwitcher.classList.remove('open');
-                langBtn.setAttribute('aria-expanded', 'false');
+            backdrop.addEventListener('click', closeNav);
+
+            links.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', closeNav);
             });
 
-            langSwitcher.querySelectorAll('.lang-option').forEach(opt => {
-                opt.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const newLang = opt.dataset.lang;
-                    // Use sendBeacon so the request survives the page reload.
-                    // fetch() can be aborted by the subsequent reload, causing
-                    // a spurious ERR_ABORTED in the console.
-                    const blob = new Blob([JSON.stringify({ lang: newLang })], { type: 'application/json' });
-                    navigator.sendBeacon('/set_language', blob);
-                    location.reload();
-                });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && links.classList.contains('open')) closeNav();
             });
         })();
     </script>

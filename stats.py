@@ -1,10 +1,11 @@
 """Execution & discipline metrics for MyHabits.
 
-Per-round 2-dimension discipline score (0-100):
+Per-round 3-dimension discipline score (0-100):
 
-    Completion Rate    70 pts   completion_rate * 50  +  full_day_ratio * 20
-                                 (base completion)       (bonus for perfect days)
-    Streak Consistency 30 pts   longest perfect-day streak / 21 * 30
+    Completion Rate    40 pts   completion_rate * 40
+    Successful Days    40 pts   successful_days / days_elapsed * 40
+                                 (a "successful day" = >=60% habits done)
+    Success Streak     20 pts   longest successful-day streak / 21 * 20
 
 Each 21-day challenge round is scored independently — the score resets
 at the start of every new round, like a sleep score per night. The main
@@ -90,34 +91,36 @@ def _score_round(rnd_habits, logs_map, today):
             "rate": h_done / h_expected if h_expected > 0 else 0,
         })
 
-    # ---- Full days & longest streak within this round ----
-    # A "full day" = every habit in scope was done that day.
-    full_days = 0
+    # ---- Successful days & longest success streak within this round ----
+    # A "successful day" = >=60% of in-scope habits done that day.
+    success_threshold = max(1, int(len(rnd_habits) * 0.6))  # ceil-ish for small N
+    successful_days = 0
     longest_streak = 0
     current_streak = 0
     for i in range(days_elapsed):
         d = (start + timedelta(days=i)).isoformat()
         done = sum(1 for h in rnd_habits if d in logs_map[h["id"]])
-        if done >= len(rnd_habits):
-            full_days += 1
+        if done >= success_threshold:
+            successful_days += 1
             current_streak += 1
             longest_streak = max(longest_streak, current_streak)
         else:
             current_streak = 0
 
     completion_rate = total_completions / total_expected if total_expected > 0 else 0
-    full_day_ratio = full_days / days_elapsed if days_elapsed > 0 else 0
+    success_day_ratio = successful_days / days_elapsed if days_elapsed > 0 else 0
 
-    # ---- Score ----
-    # Completion dimension (0-70): base rate (0-50) + full-day bonus (0-20).
-    completion_base = completion_rate * 50
-    full_day_bonus = full_day_ratio * 20
-    completion_score = completion_base + full_day_bonus
+    # ---- Score (3 dimensions, 40/40/20) ----
+    # Completion Rate (0-40): overall completion rate.
+    completion_score = completion_rate * 40
 
-    # Streak dimension (0-30): longest perfect-day run / 21.
-    streak_score = min(30, (longest_streak / 21) * 30)
+    # Successful Days (0-40): ratio of successful days to elapsed days.
+    success_days_score = success_day_ratio * 40
 
-    total_score = round(completion_score + streak_score)
+    # Success Streak (0-20): longest successful-day run / 21.
+    streak_score = min(20, (longest_streak / 21) * 20)
+
+    total_score = round(completion_score + success_days_score + streak_score)
     level_key = level_for_score(total_score)
 
     return {
@@ -130,19 +133,21 @@ def _score_round(rnd_habits, logs_map, today):
         "total_completions": total_completions,
         "total_expected": total_expected,
         "completion_rate": completion_rate,
-        "full_days": full_days,
+        "successful_days": successful_days,
         "longest_streak": longest_streak,
         "score": total_score,
         "level_key": level_key,
         "dimensions": {
             "completion": round(completion_score),
-            "completion_max": 70,
+            "completion_max": 40,
             "completion_rate_pct": round(completion_rate * 100),
-            "full_days": full_days,
+            "success_days": round(success_days_score),
+            "success_days_max": 40,
+            "successful_days": successful_days,
             "days_elapsed": days_elapsed,
-            "full_day_ratio_pct": round(full_day_ratio * 100),
+            "success_day_ratio_pct": round(success_day_ratio * 100),
             "streak": round(streak_score),
-            "streak_max": 30,
+            "streak_max": 20,
             "longest_streak": longest_streak,
         },
         "habits": habit_stats,
@@ -203,6 +208,13 @@ def compute_user_stats(db, user_id, user_tz=None):
         scored = _score_round(rounds_map[rnd], logs_map, today)
         if scored:
             round_summaries.append(scored)
+
+    # Normalize round numbers so they start from 1 (defensive: handles
+    # legacy data where round 0 may exist due to an older bug).
+    if round_summaries and round_summaries[0]["round"] != 1:
+        offset = 1 - round_summaries[0]["round"]
+        for r in round_summaries:
+            r["round"] += offset
 
     # ---- Main score = active round, else latest round ----
     active_round = next((r for r in round_summaries if r["is_active"]), None)
@@ -269,13 +281,14 @@ def compute_user_stats(db, user_id, user_tz=None):
     # ---- Aggregate stats for display ----
     total_completions_all = sum(len(v) for v in logs_map.values())
 
-    # Longest streak across all rounds (for the headline number).
+    # Longest success-day streak across all rounds (for the headline number).
+    # A "success day" = >=60% of in-scope habits done that day.
     longest_streak_all = 0
     current_streak = 0
     for d_str in sorted_dates:
         info = daily_map[d_str]
-        is_full = info["total"] > 0 and info["done"] >= info["total"]
-        if is_full:
+        is_success = info["total"] > 0 and info["done"] >= max(1, int(info["total"] * 0.6))
+        if is_success:
             current_streak += 1
             longest_streak_all = max(longest_streak_all, current_streak)
         else:

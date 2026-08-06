@@ -1,0 +1,101 @@
+{% extends "layout.html" %}
+
+{% block title %} · {{ t('nav.settings') }}{% endblock %}
+
+{% block main %}
+<div class="page">
+    <div class="shell" style="max-width: 560px;">
+        <div class="eyebrow">{{ t('settings.eyebrow') }}</div>
+        <h1 class="lede">{{ t('settings.lede') }}</h1>
+
+        {% if request.args.get('pwd_updated') %}
+        <div class="inline-success" role="status" style="margin-top: 24px;">
+            <span class="inline-success-mark" aria-hidden="true">&#10003;</span>
+            <span>{{ t('account.success') }}</span>
+        </div>
+        {% endif %}
+
+        <div class="settings-list" style="margin-top: 48px;">
+
+            <!-- 1. Language -->
+            <section class="settings-card">
+                <div class="settings-card-head">
+                    <h2 class="settings-card-title">{{ t('settings.section_language') }}</h2>
+                    <p class="settings-card-desc">{{ t('settings.lang_desc') }}</p>
+                </div>
+                <div class="settings-card-body">
+                    <div class="lang-toggle" role="group" aria-label="{{ t('settings.section_language') }}">
+                        <button type="button"
+                                class="lang-toggle-btn {% if lang == 'en' %}active{% endif %}"
+                                data-lang="en">English</button>
+                        <button type="button"
+                                class="lang-toggle-btn {% if lang == 'zh' %}active{% endif %}"
+                                data-lang="zh">中文</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Account (password reset) -->
+            <section class="settings-card">
+                <div class="settings-card-head">
+                    <h2 class="settings-card-title">{{ t('settings.section_account') }}</h2>
+                    <p class="settings-card-desc">{{ t('settings.account_desc') }}</p>
+                </div>
+                <div class="settings-card-body settings-account-row">
+                    <div class="settings-field">
+                        <span class="settings-field-label">{{ t('settings.account_username') }}</span>
+                        <span class="settings-field-value">{{ current_username }}</span>
+                    </div>
+                    <a href="{{ url_for('account') }}" class="btn btn-secondary">{{ t('settings.reset_password') }}</a>
+                </div>
+            </section>
+
+            <!-- 3. Session (log out) -->
+            <section class="settings-card settings-card-danger">
+                <div class="settings-card-head">
+                    <h2 class="settings-card-title">{{ t('settings.section_session') }}</h2>
+                    <p class="settings-card-desc">{{ t('settings.session_desc') }}</p>
+                </div>
+                <div class="settings-card-body">
+                    <form method="post" action="{{ url_for('logout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger"
+                                onclick="return confirm('{{ t('logout.confirm') }}');">
+                            {{ t('nav.logout') }}
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Language toggle on the settings page. Sends the switch via fetch then
+// reloads so the new session cookie is applied before re-rendering.
+(function () {
+    const buttons = document.querySelectorAll('.lang-toggle-btn');
+    if (!buttons.length) return;
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (btn.classList.contains('active')) return;
+            const newLang = btn.dataset.lang;
+            try {
+                await fetch('{{ url_for("set_language") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lang: newLang })
+                });
+            } catch (err) {
+                // ignore — reload anyway
+            }
+            location.reload();
+        });
+    });
+})();
+</script>
+{% endblock %}

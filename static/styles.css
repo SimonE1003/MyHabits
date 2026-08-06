@@ -104,14 +104,14 @@ a:hover { color: var(--text); }
     padding: 18px 24px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 24px;
+        gap: 24px;
 }
 .nav-brand {
     font-family: var(--font-display);
     font-size: 20px;
     letter-spacing: 0.02em;
     color: var(--text);
+    margin-right: auto;
 }
 .nav-brand .dot {
     color: var(--accent);
@@ -146,6 +146,21 @@ a:hover { color: var(--text); }
 
 /* Mobile nav */
 .nav-toggle { display: none; background: none; border: 0; color: var(--text); cursor: pointer; padding: 8px; }
+.nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 40;
+    opacity: 0;
+    transition: opacity 0.3s var(--ease);
+}
+.nav-backdrop.show {
+    display: block;
+    opacity: 1;
+}
 @media (max-width: 720px) {
     .nav-toggle { display: block; }
     .nav-links {
@@ -155,17 +170,43 @@ a:hover { color: var(--text); }
         gap: 0;
         background: var(--surface);
         border-bottom: 1px solid var(--border);
-        padding: 8px 24px 16px;
-        display: none;
+        padding: 8px 24px 20px;
+        display: flex;
+        /* Slide-down animation */
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+        transition: max-height 0.35s var(--ease), opacity 0.25s var(--ease), padding 0.3s var(--ease);
+        padding-top: 0;
+        padding-bottom: 0;
     }
-    .nav-links.open { display: flex; }
-    .nav-links li { width: 100%; padding: 10px 0; border-top: 1px solid var(--border-soft); }
+    .nav-links.open {
+        max-height: 500px;
+        opacity: 1;
+        pointer-events: auto;
+        padding: 8px 24px 20px;
+    }
+    .nav-links li {
+        width: 100%;
+        padding: 0;
+        border-top: 1px solid var(--border-soft);
+    }
+    .nav-links li:first-child { border-top: 0; }
+    .nav-links a {
+        display: block;
+        padding: 14px 0;
+        font-size: 16px;
+    }
+    .nav-links a.active {
+        color: var(--accent);
+    }
+    .nav-links a.active::after { display: none; }
 }
 
-/* Language switcher */
+/* Language switcher (in nav, left of menu toggle on mobile) */
 .lang-switcher {
     position: relative;
-    margin-left: 8px;
 }
 .lang-btn {
     background: var(--surface);
@@ -226,11 +267,35 @@ a:hover { color: var(--text); }
 .footer {
     border-top: 1px solid var(--border-soft);
     padding: 28px 24px;
-    text-align: center;
     color: var(--text-faint);
     font-size: 13px;
     letter-spacing: 0.04em;
     margin-top: 80px;
+    text-align: center;
+}
+.footer-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.footer-brand {
+    color: var(--text-faint);
+}
+@media (max-width: 720px) {
+    .footer {
+        padding: 24px 20px;
+        margin-top: 56px;
+    }
+    .footer-inner {
+        justify-content: center;
+        text-align: center;
+        flex-direction: column;
+        gap: 14px;
+    }
 }
 
 /* ---------- Main content area ---------- */
@@ -556,6 +621,7 @@ a:hover { color: var(--text); }
 .prose {
     max-width: 680px;
     margin: 0 auto;
+    padding: 0 24px;
 }
 .prose h3 {
     font-size: 24px;
@@ -811,9 +877,9 @@ a:hover { color: var(--text); }
 /* Dimension cards */
 .dim-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-    max-width: 560px;
+    max-width: 760px;
 }
 @media (max-width: 720px) {
     .dim-grid { grid-template-columns: 1fr; }
@@ -956,6 +1022,22 @@ a:hover { color: var(--text); }
     margin: 0 1px;
 }
 .heat-cell.legend:hover { transform: none; }
+/* Instant custom tooltip for heat cells (replaces slow native title) */
+.heat-tooltip {
+    position: fixed;
+    z-index: 1000;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+.heat-tooltip[hidden] { display: none; }
 .heatmap-legend {
     display: flex;
     align-items: center;
@@ -1211,5 +1293,170 @@ a:focus-visible {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* ---------- Nav: username display (links to /account) ---------- */
+.nav-user {
+    font-family: var(--font-body);
+    color: var(--text-muted);
+}
+.nav-user .nav-user-at {
+    color: var(--text-faint);
+    margin-right: 1px;
+}
+.nav-user:hover .nav-user-at { color: var(--accent); }
+
+/* ---------- Account page: success message ---------- */
+.inline-success {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(127, 176, 105, 0.08);
+    border: 1px solid rgba(127, 176, 105, 0.25);
+    border-radius: 6px;
+    color: #a8c898;
+    font-size: 14px;
+    line-height: 1.45;
+    margin-top: 24px;
+}
+.inline-success-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--success);
+    color: #1a1410;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* ---------- Button variants ---------- */
+.btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+}
+.btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+}
+.btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border-color: rgba(198, 110, 110, 0.4);
+}
+.btn-danger:hover {
+    background: rgba(198, 110, 110, 0.1);
+    border-color: var(--danger);
+    transform: translateY(-1px);
+}
+
+/* ---------- Settings page ---------- */
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 24px;
+}
+.settings-card-danger {
+    border-color: rgba(198, 110, 110, 0.2);
+}
+.settings-card-head {
+    margin-bottom: 20px;
+}
+.settings-card-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+.settings-card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+.settings-card-body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* Language toggle — segmented control */
+.lang-toggle {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+}
+.lang-toggle-btn {
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+}
+.lang-toggle-btn:hover {
+    color: var(--text);
+}
+.lang-toggle-btn.active {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Account row: username + reset button */
+.settings-account-row {
+    justify-content: space-between;
+}
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.settings-field-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.settings-field-value {
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--text);
+}
+
+.settings-toast {
+    font-size: 13px;
+    color: var(--success);
+}
+
+/* Mobile: stack account row vertically */
+@media (max-width: 520px) {
+    .settings-account-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .settings-account-row .btn {
+        width: 100%;
     }
 }

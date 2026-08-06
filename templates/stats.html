@@ -59,9 +59,15 @@
                 <div class="dim-label">{{ t('stats.dim_completion') }}</div>
                 <div class="dim-value">{{ stats.dimensions.completion_rate_pct }}%</div>
                 <div class="dim-bar"><div class="dim-fill" style="width: {{ (stats.dimensions.completion / stats.dimensions.completion_max) * 100 }}%"></div></div>
+                <div class="dim-pts">{{ stats.dimensions.completion }} / {{ stats.dimensions.completion_max }} {{ t('stats.pts') }}</div>
+            </div>
+            <div class="dim-card">
+                <div class="dim-label">{{ t('stats.dim_success') }}</div>
+                <div class="dim-value">{{ stats.dimensions.success_day_ratio_pct }}%</div>
+                <div class="dim-bar"><div class="dim-fill" style="width: {{ (stats.dimensions.success_days / stats.dimensions.success_days_max) * 100 }}%"></div></div>
                 <div class="dim-pts">
-                    {{ stats.dimensions.completion }} / {{ stats.dimensions.completion_max }} {{ t('stats.pts') }}
-                    · {{ stats.dimensions.full_days }}/{{ stats.dimensions.days_elapsed }} {{ t('stats.full_days') }}
+                    {{ stats.dimensions.success_days }} / {{ stats.dimensions.success_days_max }} {{ t('stats.pts') }}
+                    · {{ stats.dimensions.successful_days }}/{{ stats.dimensions.days_elapsed }} {{ t('stats.success_days_label') }}
                 </div>
             </div>
             <div class="dim-card">
@@ -130,7 +136,7 @@
                     <div class="round-rate">{{ (rnd.completion_rate * 100) | round }}% {{ t('stats.completion') }}</div>
                     <div class="round-meta">
                         {{ rnd.total_completions }} / {{ rnd.total_expected }} {{ t('stats.completions') }}
-                        · {{ rnd.full_days }} {{ t('stats.full_days') }}
+                        · {{ rnd.successful_days }} {{ t('stats.success_days_label') }}
                         · {{ rnd.longest_streak }} {{ t('stats.day_streak') }}
                     </div>
                     <div class="round-bar">
@@ -193,7 +199,7 @@
                                         <div class="heat-cell future"></div>
                                     {% elif cell.is_placeholder %}
                                         <div class="heat-cell empty"
-                                             title="{{ cell.date }}"></div>
+                                             data-date="{{ cell.date }}"></div>
                                     {% else %}
                                         {% if cell.ratio == 0 %}
                                             {% set level = 0 %}
@@ -207,8 +213,9 @@
                                             {% set level = 4 %}
                                         {% endif %}
                                         <div class="heat-cell level-{{ level }}"
-                                             title="{{ cell.date }}: {{ cell.done }}/{{ cell.total }}"
-                                             data-date="{{ cell.date }}">
+                                             data-date="{{ cell.date }}"
+                                             data-done="{{ cell.done }}"
+                                             data-total="{{ cell.total }}">
                                         </div>
                                     {% endif %}
                                 {% endfor %}
@@ -234,32 +241,87 @@
     </div>
 </div>
 
+<!-- Tooltip lives outside the calendar section. The year switcher now
+     uses full-page navigation, so this node is never replaced. -->
+<div class="heat-tooltip" id="heatTooltip" role="tooltip" hidden></div>
+
 <script>
 (function () {
-    const section = document.getElementById('completion-calendar');
-    if (!section) return;
+    function getTooltip() {
+        return document.getElementById('heatTooltip');
+    }
 
-    section.addEventListener('click', async function (e) {
-        const btn = e.target.closest('.year-btn');
-        if (!btn) return;
-        e.preventDefault();
-        const url = btn.getAttribute('href');
-        if (btn.classList.contains('active')) return;
-
-        try {
-            const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' } });
-            if (!res.ok) return;
-            const html = await res.text();
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            const newSection = doc.getElementById('completion-calendar');
-            if (newSection) {
-                section.innerHTML = newSection.innerHTML;
-                history.replaceState(null, '', url);
-            }
-        } catch (err) {
-            // Network error — fall back to full navigation
-            window.location.href = url;
+    function showTooltip(cell) {
+        const tooltip = getTooltip();
+        if (!tooltip) return;
+        const date = cell.dataset.date;
+        const done = cell.dataset.done;
+        const total = cell.dataset.total;
+        if (!date) return;
+        let text = date;
+        if (done !== undefined && total !== undefined) {
+            text = date + ' · ' + done + '/' + total;
         }
+        tooltip.textContent = text;
+        tooltip.hidden = false;
+        const rect = cell.getBoundingClientRect();
+        const tw = tooltip.offsetWidth;
+        const th = tooltip.offsetHeight;
+        let left = rect.left + rect.width / 2 - tw / 2;
+        let top = rect.top - th - 8;
+        left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+        if (top < 8) top = rect.bottom + 8;
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+    }
+
+    function hideTooltip() {
+        const tooltip = getTooltip();
+        if (!tooltip) return;
+        tooltip.hidden = true;
+    }
+
+    // Bind tooltip + year-switcher handlers to a section.
+    // Called once on load and again on bfcache restore (pageshow),
+    // because bfcache skips re-running <script> — leaving the new
+    // section node without any listeners.
+    function bind() {
+        const section = document.getElementById('completion-calendar');
+        if (!section || section.dataset.bound === '1') return;
+        section.dataset.bound = '1';
+
+        section.addEventListener('mouseover', function (e) {
+            const cell = e.target.closest('.heat-cell');
+            if (!cell || cell.classList.contains('future') || cell.classList.contains('legend')) return;
+            showTooltip(cell);
+        });
+        section.addEventListener('mouseout', function (e) {
+            const cell = e.target.closest('.heat-cell');
+            if (!cell) return;
+            const related = e.relatedTarget;
+            if (!related || !cell.contains(related)) {
+                hideTooltip();
+            }
+        });
+
+        // Year switcher: full-page navigation via location.replace so the
+        // browser doesn't serve a bfcache snapshot (which would skip this
+        // script and leave tooltip listeners unbound).
+        section.addEventListener('click', function (e) {
+            const btn = e.target.closest('.year-btn');
+            if (!btn) return;
+            e.preventDefault();
+            location.replace(btn.getAttribute('href'));
+        });
+    }
+
+    bind();
+    // Re-bind after bfcache restore.
+    window.addEventListener('pageshow', function (e) {
+        // Reset the bound flag so bind() runs again on the restored node.
+        const section = document.getElementById('completion-calendar');
+        if (section) section.dataset.bound = '';
+        bind();
     });
 })();
 </script>

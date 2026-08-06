@@ -3,7 +3,7 @@ import random
 import sqlite3
 from datetime import date, datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-from flask import Flask, g, redirect, render_template, request, session, jsonify
+from flask import Flask, g, redirect, render_template, request, session, jsonify, url_for
 from flask_wtf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 from dotenv import load_dotenv
@@ -176,25 +176,49 @@ SUPPORTED_LANGS = {'en', 'zh'}
 
 @app.context_processor
 def inject_i18n():
-    """Make t(key) and lang available in every template."""
+    """Make t(key), lang, and the logged-in username available in every template.
+
+    The username is fetched once per request so the nav can display it
+    without each route having to pass it explicitly.
+    """
     lang = session.get('lang', 'en')
-    return {'t': lambda key: translate(key, lang), 'lang': lang}
+    current_username = None
+    uid = session.get('user_id')
+    if uid is not None:
+        # Use a fresh connection — context processors run before route
+        # handlers, so g.db may not be set up yet and may not need to be.
+        db = get_db()
+        row = db.execute("SELECT username FROM users WHERE id = ?", (uid,)).fetchone()
+        if row:
+            current_username = row['username']
+    return {'t': lambda key: translate(key, lang), 'lang': lang,
+            'current_username': current_username}
 
 
 @app.route("/set_language", methods=["POST"])
 @csrf.exempt
 def set_language():
-    """Switch language. Called via sendBeacon from the nav button."""
-    # sendBeacon sends with Content-Type from the Blob, but some browsers
-    # override to text/plain. Accept both JSON and form data.
+    """Switch language.
+
+    Accepts JSON (fetch/sendBeacon) or form data (synchronous form POST).
+    For form POSTs, redirect back to the previous page so the browser
+    applies the updated session cookie before re-rendering. For JSON
+    requests, return JSON (AJAX callers handle reload themselves).
+    """
+    is_json = request.is_json or request.headers.get('X-Requested-With') == 'fetch'
     data = request.get_json(silent=True)
     if data is None:
         data = request.form.to_dict()
     lang = (data or {}).get('lang', 'en')
     if lang not in SUPPORTED_LANGS:
-        return jsonify(success=False), 400
+        if is_json:
+            return jsonify(success=False), 400
+        return apology(translate("error.bad_request", session.get('lang', 'en')))
     session['lang'] = lang
-    return jsonify(success=True)
+    if is_json:
+        return jsonify(success=True)
+    # Synchronous form POST: redirect back to where the user came from
+    return redirect(request.referrer or url_for('home'))
 
 
 # ---------- Auth routes ----------
@@ -269,11 +293,88 @@ def register():
     return redirect("/")
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
-    """Log user out"""
+    """Log user out via POST only (GET logout is a CSRF risk)."""
     session.clear()
     return redirect("/")
+
+
+# ---------- Account management ----------
+
+@app.route("/settings")
+@login_required
+def settings():
+    """Settings hub: language, account (password reset), and logout.
+
+    The page itself is read-only — language switching is handled by the
+    existing /set_language endpoint (called via fetch from the page),
+    password reset lives at /account, and logout at /logout.
+    """
+    return render_template("settings.html")
+
+
+@app.route("/account", methods=["GET", "POST"])
+@login_required
+def account():
+    """Let the user reset their password.
+
+    Requires the current password to confirm identity before setting a new
+    one. Username is read-only (displayed but not editable).
+    """
+    user_id = session["user_id"]
+    lang = session.get('lang', 'en')
+    db = get_db()
+
+    if request.method == "POST":
+        current_pw = request.form.get("current_password", "")
+        new_pw = request.form.get("new_password", "")
+        confirm_pw = request.form.get("confirm_password", "")
+
+        # ---- Validate all inputs before mutating ----
+        if not current_pw or not new_pw or not confirm_pw:
+            return render_template(
+                "account.html", error_key="account.error_empty"
+            ), 400
+
+        if new_pw != confirm_pw:
+            return render_template(
+                "account.html", error_key="account.error_match"
+            ), 400
+
+        if len(new_pw) > 128:
+            return render_template(
+                "account.html", error_key="account.error_length"
+            ), 400
+
+        # Verify current password against stored hash.
+        user = db.execute(
+            "SELECT hash FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if not user or not check_password_hash(user['hash'], current_pw):
+            return render_template(
+                "account.html", error_key="account.error_wrong_current"
+            ), 401
+
+        # New password must differ from the current one.
+        if check_password_hash(user['hash'], new_pw):
+            return render_template(
+                "account.html", error_key="account.error_same"
+            ), 400
+
+        # All checks passed — update the hash.
+        new_hash = generate_password_hash(new_pw, method='pbkdf2:sha256')
+        db.execute(
+            "UPDATE users SET hash = ? WHERE id = ?",
+            (new_hash, user_id)
+        )
+        db.commit()
+
+        # Redirect to /settings with a flag so the success message shows there.
+        return redirect(url_for('settings', pwd_updated=1))
+
+    # GET: show the form.
+    return render_template("account.html")
 
 
 # ---------- Habit routes ----------
@@ -363,15 +464,51 @@ def set_habits():
             tz_val = DEFAULT_TIMEZONE
 
         today = user_today(user_id).isoformat()
-        try:
-            # Archive current habits instead of deleting — preserves history.
-            # habit_logs are kept too since the habit rows still exist.
-            db.execute(
-                "UPDATE habits SET archived = 1 WHERE user_id = ? AND archived = 0",
-                (user_id,)
-            )
 
-            # Determine next challenge round (1 if no prior rounds exist)
+        # Check if the current challenge is still active (within 21 days).
+        # If so, the user is resetting mid-cycle — DELETE the incomplete
+        # cycle's habits + logs so they don't appear on the Completion Calendar.
+        # If the challenge is finished (or none exists), ARCHIVE to preserve
+        # the completed round's history.
+        user_row = db.execute(
+            "SELECT challenge_start_date FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+        is_active_challenge = False
+        if user_row and user_row['challenge_start_date']:
+            start_date = date.fromisoformat(str(user_row['challenge_start_date']))
+            days_elapsed = (user_today(user_id) - start_date).days + 1
+            is_active_challenge = days_elapsed <= 21
+
+        try:
+            if is_active_challenge:
+                # Mid-challenge reset: delete current habits + their logs entirely.
+                # The incomplete cycle won't show on the calendar or in round history.
+                active_ids = [r['id'] for r in db.execute(
+                    "SELECT id FROM habits WHERE user_id = ? AND archived = 0",
+                    (user_id,)
+                ).fetchall()]
+                if active_ids:
+                    placeholders = ",".join("?" * len(active_ids))
+                    db.execute(
+                        f"DELETE FROM habit_logs WHERE habit_id IN ({placeholders})",
+                        active_ids
+                    )
+                    db.execute(
+                        f"DELETE FROM habits WHERE id IN ({placeholders})",
+                        active_ids
+                    )
+            else:
+                # Challenge completed (or none exists): archive to preserve history.
+                db.execute(
+                    "UPDATE habits SET archived = 1 WHERE user_id = ? AND archived = 0",
+                    (user_id,)
+                )
+
+            # Determine next challenge round (1 if no prior rounds exist).
+            # If we just deleted an incomplete round, MAX(challenge_round)
+            # comes from prior archived rounds — so the new round reuses
+            # the deleted round's number (clean slate, no gap).
             round_row = db.execute(
                 "SELECT MAX(challenge_round) AS max_round FROM habits WHERE user_id = ?",
                 (user_id,)
@@ -385,8 +522,8 @@ def set_habits():
 
             for name, phase in new_habits:
                 db.execute(
-                    "INSERT INTO habits (user_id, name, phase, challenge_round, archived) VALUES (?, ?, ?, ?, 0)",
-                    (user_id, name, phase, next_round)
+                    "INSERT INTO habits (user_id, name, phase, challenge_round, challenge_start, archived) VALUES (?, ?, ?, ?, ?, 0)",
+                    (user_id, name, phase, next_round, today)
                 )
             db.commit()
         except Exception:
@@ -395,11 +532,34 @@ def set_habits():
 
         return redirect("/today")
 
-    # GET: pass timezone info so the dropdown can show the current selection.
+    # GET: pass timezone info and challenge status to the template.
     db = get_db()
-    user = db.execute("SELECT timezone FROM users WHERE id = ?", (user_id,)).fetchone()
+    user = db.execute(
+        "SELECT timezone, challenge_start_date FROM users WHERE id = ?",
+        (user_id,)
+    ).fetchone()
     current_tz = user['timezone'] if user and user['timezone'] else DEFAULT_TIMEZONE
-    return render_template("set_habits.html", timezones=SUPPORTED_TIMEZONES, current_timezone=current_tz)
+
+    # Check if the current challenge is still active (within 21 days) and
+    # has non-archived habits — if so, the confirm prompt warns the user
+    # that resetting will clear the current cycle's calendar records.
+    is_challenge_active = False
+    if user and user['challenge_start_date']:
+        start_date = date.fromisoformat(str(user['challenge_start_date']))
+        days_elapsed = (user_today(user_id) - start_date).days + 1
+        if days_elapsed <= 21:
+            active_count = db.execute(
+                "SELECT COUNT(*) AS count FROM habits WHERE user_id = ? AND archived = 0",
+                (user_id,)
+            ).fetchone()["count"]
+            is_challenge_active = active_count > 0
+
+    return render_template(
+        "set_habits.html",
+        timezones=SUPPORTED_TIMEZONES,
+        current_timezone=current_tz,
+        is_challenge_active=is_challenge_active,
+    )
 
 
 @app.route("/now", methods=["GET"])
@@ -455,7 +615,31 @@ def now():
         return render_template('now_result.html', state='all_done')
 
     current_time = datetime.now(get_user_timezone(user_id)).strftime("%H:%M")
-    return render_template('now.html', habits_not_completed=habits_not_completed, current_time=current_time)
+
+    # Bedtime options: 20:00 → 03:00 in 30-min steps (covers typical sleep times).
+    # A <select> with explicit labels eliminates the AM/PM ambiguity of
+    # <input type="time">, where selecting "1:00" at noon could mean 13:00.
+    lang = session.get('lang', 'en')
+    bedtime_options = []
+    for h in list(range(20, 24)) + list(range(0, 4)):
+        for m in (0, 30):
+            if h == 3 and m == 30:
+                break
+            value = f"{h:02d}:{m:02d}"
+            if h == 0:
+                label = f"12:{m:02d} AM (midnight)" if lang == 'en' else f"凌晨 12:{m:02d}"
+            elif h < 12:
+                label = f"{h}:{m:02d} AM" if lang == 'en' else f"凌晨 {h}:{m:02d}"
+            else:
+                label = f"{h-12}:{m:02d} PM" if lang == 'en' else f"晚上 {h-12}:{m:02d}"
+            bedtime_options.append((value, label))
+
+    return render_template(
+        'now.html',
+        habits_not_completed=habits_not_completed,
+        current_time=current_time,
+        bedtime_options=bedtime_options,
+    )
 
 
 @app.route("/api/now_plan", methods=["POST"])
@@ -571,9 +755,10 @@ def mark_done():
         )
         db.commit()
         return jsonify(success=True)
-    except Exception as e:
+    except Exception:
         db.rollback()
-        return jsonify(success=False, message=str(e)), 500
+        app.logger.exception("mark_done failed")
+        return jsonify(success=False), 500
 
 
 @app.route("/info")

@@ -99,7 +99,7 @@ def generate_plan(habits_not_completed, bedtime=None, lang='en', user_tz=None):
     bedtime_text = bedtime.strip() if bedtime and bedtime.strip() else "not specified (assume 23:00)"
 
     user_prompt = (
-        f"Current time: {current_time} (Asia/Shanghai)\n"
+        f"Current time: {current_time} ({tz})\n"
         f"Planned bedtime: {bedtime_text}\n\n"
         f"Habits not completed today:\n{habit_list}\n\n"
         f"Plan the remaining time before sleep."

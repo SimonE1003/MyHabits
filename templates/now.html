@@ -13,7 +13,11 @@
 
         <div class="now-form" id="nowForm">
             <label for="bedtime" class="now-label">{{ t('now.bedtime_label') }}</label>
-            <input type="time" id="bedtime" name="bedtime" class="now-input" value="23:00">
+            <select id="bedtime" name="bedtime" class="now-input">
+                {% for value, label in bedtime_options %}
+                <option value="{{ value }}" {% if value == '23:00' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
             <button type="button" id="planBtn" class="btn btn-primary btn-large">{{ t('now.btn') }}</button>
         </div>
 
@@ -33,6 +37,7 @@
     const thinkingLabel = "{{ t('now.thinking') }}";
     const generatedLabel = "{{ t('now.generated') }}";
     const networkErrorLabel = "{{ t('now.network_error') }}";
+    const timeoutLabel = "{{ t('now.error_timeout') }}";
 
     function escapeHtml(s) {
         return s.replace(/&/g, '&amp;')
@@ -99,7 +104,7 @@
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            const resp = await fetch('/api/now_plan', {
+            const resp = await fetch('{{ url_for("now_plan") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -123,7 +128,7 @@
             result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (e) {
             result.hidden = false;
-            const msg = e.name === 'AbortError' ? 'Request timed out' : e.message;
+            const msg = e.name === 'AbortError' ? timeoutLabel : e.message;
             result.innerHTML = `<div class="plan-error">${networkErrorLabel}: ${escapeHtml(msg)}</div>`;
         } finally {
             clearTimeout(timeout);

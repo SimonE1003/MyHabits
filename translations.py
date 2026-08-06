@@ -11,7 +11,22 @@ TRANSLATIONS = {
     'nav.now':         {'en': 'Now',           'zh': '现在'},
     'nav.info':        {'en': 'Info',          'zh': '说明'},
     'nav.logout':      {'en': 'Log Out',       'zh': '登出'},
+    'nav.account':     {'en': 'Account',       'zh': '账户'},
+    'nav.settings':    {'en': 'Settings',      'zh': '设置'},
     'nav.brand':       {'en': 'MyHabits',      'zh': 'MyHabits'},
+
+    # ---- Settings page ----
+    'settings.eyebrow':         {'en': 'Settings',                  'zh': '设置'},
+    'settings.lede':            {'en': 'Manage your preferences',   'zh': '管理你的偏好设置'},
+    'settings.section_language':{'en': 'Language',                  'zh': '语言'},
+    'settings.lang_desc':       {'en': 'Choose the interface language.', 'zh': '选择界面语言。'},
+    'settings.section_account': {'en': 'Account',                   'zh': '账户'},
+    'settings.account_username':{'en': 'Username',                  'zh': '用户名'},
+    'settings.account_desc':    {'en': 'Change your password.',     'zh': '修改你的密码。'},
+    'settings.reset_password':  {'en': 'Reset Password',            'zh': '重设密码'},
+    'settings.section_session': {'en': 'Session',                   'zh': '会话'},
+    'settings.session_desc':    {'en': 'End your session on this device.', 'zh': '在此设备上结束你的会话。'},
+    'settings.lang_changed':    {'en': 'Language updated.',         'zh': '语言已更新。'},
 
     # ---- Auth shared ----
     'auth.username':      {'en': 'Username',           'zh': '用户名'},
@@ -36,6 +51,25 @@ TRANSLATIONS = {
     'register.error_match':   {'en': "Those passwords don't match.",              'zh': '两次密码不一致。'},
     'register.error_taken':   {'en': 'That username is already taken.',           'zh': '该用户名已被占用。'},
     'register.error_length':  {'en': 'Username or password is too long.',         'zh': '用户名或密码过长。'},
+
+    # ---- Account page (password reset) ----
+    'account.eyebrow':         {'en': 'Account',                          'zh': '账户'},
+    'account.lede':            {'en': 'Reset your password',              'zh': '重设你的密码'},
+    'account.desc':            {
+        'en': 'Enter your current password to confirm, then choose a new one. Your habit history and challenge progress are not affected.',
+        'zh': '请输入当前密码以确认身份，然后设置新密码。你的习惯记录和挑战进度不会受到影响。'
+    },
+    'account.username':        {'en': 'Username',                          'zh': '用户名'},
+    'account.current_password':{'en': 'Current password',                  'zh': '当前密码'},
+    'account.new_password':    {'en': 'New password',                      'zh': '新密码'},
+    'account.confirm_password':{'en': 'Confirm new password',              'zh': '确认新密码'},
+    'account.btn':             {'en': 'Update Password',                   'zh': '更新密码'},
+    'account.success':         {'en': 'Password updated successfully.',    'zh': '密码已成功更新。'},
+    'account.error_wrong_current': {'en': 'Current password is incorrect.', 'zh': '当前密码不正确。'},
+    'account.error_empty':     {'en': 'Please fill in all fields.',        'zh': '请填写所有字段。'},
+    'account.error_match':     {'en': "New passwords don't match.",        'zh': '两次新密码不一致。'},
+    'account.error_length':    {'en': 'New password is too long.',         'zh': '新密码过长。'},
+    'account.error_same':      {'en': 'New password must be different from the current one.', 'zh': '新密码不能与当前密码相同。'},
 
     # ---- Today page (empty / not started) ----
     'today.empty_eyebrow': {'en': 'No active challenge',  'zh': '暂未开始挑战'},
@@ -87,6 +121,10 @@ TRANSLATIONS = {
     'set_habits.phase':    {'en': 'Phase',     'zh': '时段'},
     'set_habits.btn':      {'en': 'Begin 21-Day Challenge', 'zh': '开始 21 天挑战'},
     'set_habits.confirm':  {'en': 'This will reset all progress. Continue?', 'zh': '这会重置所有进度，确定继续吗？'},
+    'set_habits.confirm_active': {
+        'en': "You haven't finished the current 21-day challenge yet. Starting over will CLEAR all records from this cycle — completed days and tasks will no longer appear on the Completion Calendar. Continue?",
+        'zh': '你还没有完成当前的 21 天挑战。重新开始将清除当前周期的所有记录——已完成的天数和任务将不再显示在完成日历上。确定继续吗？'
+    },
     'set_habits.error_no_habit': {'en': 'You need at least one habit', 'zh': '至少需要填写一个习惯'},
     'set_habits.error_no_phase': {'en': 'please enter a Time Phase for each habit', 'zh': '请为每个习惯选择时段'},
     'set_habits.timezone': {'en': 'Your timezone', 'zh': '你的时区'},
@@ -105,6 +143,7 @@ TRANSLATIONS = {
     'now.thinking':        {'en': 'Thinking…',        'zh': '思考中…'},
     'now.generated':       {'en': 'Generated',        'zh': '生成用时'},
     'now.network_error':   {'en': 'Network error',    'zh': '网络错误'},
+    'now.error_timeout':   {'en': 'Request timed out', 'zh': '请求超时'},
 
     # ---- Now result page (edge cases) ----
     'now_result.no_habits_eyebrow': {'en': 'No habits yet',  'zh': '尚未设置习惯'},
@@ -161,6 +200,25 @@ TRANSLATIONS = {
     'info.evening':        {'en': 'Evening', 'zh': '晚上'},
     'info.evening_desc':   {'en': 'Relax and prepare for sleep.', 'zh': '放松，准备入睡。'},
     'info.science':        {'en': 'Science behind the site', 'zh': '背后的科学'},
+
+    # ---- Errors ----
+    'error.bad_request':   {'en': 'Bad request',       'zh': '请求无效'},
+
+    # ---- Info: The "Now" function section ----
+    'info.now_title':      {'en': 'The "Now" function',  'zh': '"现在"功能'},
+    'info.now_b1':         {'en': 'Shows the habits you still need to complete today, grouped by time phase.', 'zh': '展示你今天尚未完成的习惯，按时段分组。'},
+    'info.now_b2':         {'en': 'Enter your target bedtime and the AI planner builds a personalized schedule for the rest of your day.', 'zh': '输入你的目标就寝时间，AI 规划器会为你安排接下来一天的个性化计划。'},
+    'info.now_b3':         {'en': 'Each remaining habit is placed into a time slot so you know exactly when to do it.', 'zh': '每个未完成的习惯都会被分配到具体时间段，让你清楚何时去做。'},
+    'info.now_b4':         {'en': 'Use it mid-day when you\'re unsure how to fit everything in before bed.', 'zh': '当你在一天中不确定如何安排剩余习惯时使用它。'},
+
+    # ---- Info: How we track your score section ----
+    'info.score_title':    {'en': 'How we track your score', 'zh': '我们如何计算分数'},
+    'info.score_b1':       {'en': 'Each 21-day challenge round is scored on a 0–100 scale across three dimensions.', 'zh': '每轮 21 天挑战按 0–100 分制评分，包含三个维度。'},
+    'info.score_b2':       {'en': 'Completion Rate (40 pts): total completions ÷ total expected.', 'zh': '完成率（40 分）：总完成数 ÷ 应完成总数。'},
+    'info.score_b3':       {'en': 'Successful Days (40 pts): a day counts as "successful" if you complete ≥60% of your habits that day.', 'zh': '成功天（40 分）：一天完成 ≥60% 的习惯即算"成功天"。'},
+    'info.score_b4':       {'en': 'Success Streak (20 pts): your longest run of consecutive successful days, scaled against 21.', 'zh': '连续性（20 分）：你最长的连续成功天数，按 21 天折算。'},
+    'info.score_b5':       {'en': 'The score resets at the start of each new round — like a sleep score per night.', 'zh': '每轮新挑战开始时分数重置——就像每晚的睡眠评分。'},
+    'info.score_b6':       {'en': 'Past rounds keep their final scores in the challenge history for comparison.', 'zh': '过往轮次的最终分数保留在挑战历史中，方便对比。'},
     'info.habit_sunlight': {'en': 'Sunlight viewing for 5–20 min', 'zh': '晒太阳 5–20 分钟'},
     'info.habit_hardwork': {'en': 'Hard work for 1.5h', 'zh': '高强度工作 1.5 小时'},
     'info.habit_visualize':{'en': 'Visualize the day (reduces limbic friction)', 'zh': '想象今天一天（降低边缘系统阻力）'},
@@ -203,8 +261,8 @@ TRANSLATIONS = {
     'lang.label':          {'en': 'Language', 'zh': '语言'},
 
     # ---- Stats page ----
-    'nav.stats':           {'en': 'Stats',           'zh': '数据'},
-    'stats.title':         {'en': 'Stats',           'zh': '数据'},
+    'nav.stats':           {'en': 'Score',           'zh': '分数'},
+    'stats.title':         {'en': 'Score',           'zh': '分数'},
     'stats.eyebrow':       {'en': 'Your trajectory', 'zh': '你的轨迹'},
     'stats.lede':          {'en': 'How you are building yourself.', 'zh': '你正在如何塑造自己。'},
     'stats.desc':          {
@@ -216,16 +274,17 @@ TRANSLATIONS = {
     'stats.day_streak':    {'en': 'day streak',      'zh': '天连续'},
     'stats.days':          {'en': 'days',            'zh': '天'},
     'stats.full_days':     {'en': 'full days',       'zh': '全勤天'},
+    'stats.success_days_label': {'en': 'success days', 'zh': '成功天'},
     'stats.pts':           {'en': 'pts',             'zh': '分'},
     'stats.insufficient':  {'en': 'Not enough data yet — keep going for a meaningful score.', 'zh': '数据不足——继续坚持才能得到有意义的分数。'},
     'stats.round_ended':   {'en': 'This round has ended.', 'zh': '本轮挑战已结束。'},
     'stats.start_new_cta': {'en': 'Start a new 21-day challenge', 'zh': '开始新一轮 21 天挑战'},
 
     # Score levels
-    'stats.level_master':       {'en': 'Mastery',          'zh': '精通'},
+    'stats.level_master':       {'en': 'Mastery',          'zh': '大师'},
     'stats.level_disciplined':  {'en': 'Disciplined',      'zh': '自律'},
-    'stats.level_consistent':   {'en': 'Consistent',       'zh': '稳定'},
-    'stats.level_building':     {'en': 'Building',         'zh': '建设中'},
+    'stats.level_consistent':   {'en': 'Consistent',       'zh': '坚持'},
+    'stats.level_building':     {'en': 'Improving',        'zh': '进步中'},
     'stats.level_beginning':    {'en': 'Beginning',        'zh': '起步'},
 
     # Level thresholds table
@@ -234,6 +293,7 @@ TRANSLATIONS = {
 
     # Dimensions
     'stats.dim_completion': {'en': 'Completion',     'zh': '完成率'},
+    'stats.dim_success':    {'en': 'Successful Days', 'zh': '成功天'},
     'stats.dim_streak':     {'en': 'Streak',         'zh': '连续性'},
 
     # Heatmap
