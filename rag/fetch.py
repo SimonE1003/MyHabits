@@ -1,0 +1,124 @@
+"""Stage 1 — 采集：从 hubermanlab.com sitemap 拉取语料原始 HTML。
+
+语料范围（免费内容）：
+    /newsletter/<slug>   Neural Network newsletter（核心语料，protocol 密度最高）
+    /episode/<slug>      播客页（免费部分：标题 + 简介 + 章节时间戳；
+                         完整 transcript 是 Premium 付费内容，抓不到）
+    白名单专题页         /nsdr /daily-blueprint 等 protocol 页
+
+特性：
+    - sitemap 驱动，无需爬列表页
+    - 断点续抓：已存在且非空的文件直接跳过
+    - 限速：每请求间隔 FETCH_DELAY 秒，对站点友好
+    - manifest.json 记录每次抓取（url/kind/slug/时间/字节数）
+
+用法（通常由 build.py 调用）：
+    python -m rag.fetch [--limit N] [--refresh]
+"""
+import argparse
+import json
+import os
+import re
+import sys
+import time
+import urllib.request
+
+BASE = "https://www.hubermanlab.com"
+SITEMAP = f"{BASE}/sitemap.xml"
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+      "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+
+RAW_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw")
+MANIFEST = os.path.join(RAW_DIR, "manifest.json")
+FETCH_DELAY = 2.0   # 秒，两个请求之间
+TIMEOUT = 30
+
+# 免费专题页白名单（不含列表页/导航页）
+EXTRA_PAGES = {
+    "/nsdr": ("nsdr", "NSDR Protocols"),
+    "/daily-blueprint": ("protocol", "Daily Blueprint"),
+}
+
+
+def _http_get(url):
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        return resp.read().decode("utf-8", errors="replace")
+
+
+def parse_sitemap(xml_text):
+    """sitemap.xml -> [(url, kind, slug)]，只保留目标语料。"""
+    out = []
+    for loc in re.findall(r"<loc>(.*?)</loc>", xml_text):
+        path = loc.replace(BASE, "").rstrip("/")
+        if path.startswith("/newsletter/") and len(path) > len("/newsletter/"):
+            out.append((loc, "newsletter", path.split("/")[-1]))
+        elif path.startswith("/episode/") and len(path) > len("/episode/"):
+            out.append((loc, "episode", path.split("/")[-1]))
+        elif path in EXTRA_PAGES:
+            out.append((loc, *EXTRA_PAGES[path]))
+    return out
+
+
+def load_manifest():
+    if os.path.exists(MANIFEST):
+        with open(MANIFEST, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def save_manifest(m):
+    os.makedirs(RAW_DIR, exist_ok=True)
+    with open(MANIFEST, "w", encoding="utf-8") as f:
+        json.dump(m, f, ensure_ascii=False, indent=1, sort_keys=True)
+
+
+def raw_path(kind, slug):
+    return os.path.join(RAW_DIR, f"{kind}--{slug}.html")
+
+
+def fetch(limit=None, refresh=False):
+    """抓取全部目标语料。返回 (新抓数, 跳过数, 失败数)。"""
+    targets = parse_sitemap(_http_get(SITEMAP))
+    print(f"sitemap: {len(targets)} target pages "
+          f"({sum(1 for t in targets if t[1]=='newsletter')} newsletters, "
+          f"{sum(1 for t in targets if t[1]=='episode')} episodes, "
+          f"{sum(1 for t in targets if t[1] in ('nsdr','protocol'))} protocol pages)")
+
+    manifest = load_manifest()
+    fetched = skipped = failed = 0
+
+    for url, kind, slug in targets:
+        path = raw_path(kind, slug)
+        if not refresh and os.path.exists(path) and os.path.getsize(path) > 5000:
+            skipped += 1
+            continue
+        if limit is not None and fetched >= limit:
+            break
+        try:
+            html = _http_get(url)
+            os.makedirs(RAW_DIR, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(html)
+            manifest[f"{kind}/{slug}"] = {
+                "url": url, "bytes": len(html),
+                "fetched_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            fetched += 1
+            print(f"  [{fetched}] {kind}/{slug} ({len(html)//1024} KB)")
+        except Exception as e:
+            failed += 1
+            print(f"  FAIL {kind}/{slug}: {e}", file=sys.stderr)
+        time.sleep(FETCH_DELAY)
+
+    save_manifest(manifest)
+    print(f"fetch done: {fetched} new, {skipped} skipped, {failed} failed")
+    return fetched, skipped, failed
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--limit", type=int, default=None, help="只抓前 N 个（测试用）")
+    ap.add_argument("--refresh", action="store_true", help="已抓过的也重新抓")
+    args = ap.parse_args()
+    fetch(limit=args.limit, refresh=args.refresh)

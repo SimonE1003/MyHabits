@@ -83,6 +83,10 @@
         <div class="round-ended-cta" style="margin-top: 32px;">
             <div class="round-ended-note">{{ t('stats.round_ended') }}</div>
             <a href="{{ url_for('set_habits') }}" class="btn btn-primary">{{ t('stats.start_new_cta') }}</a>
+            <form method="post" action="{{ url_for('reuse_habits') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary">{{ t('stats.reuse_cta') }}</button>
+            </form>
         </div>
         {% endif %}
 

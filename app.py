@@ -1,4 +1,5 @@
 import os
+import re
 import random
 import sqlite3
 from datetime import date, datetime, timezone, timedelta
@@ -10,6 +11,7 @@ from dotenv import load_dotenv
 
 from helpers import apology, login_required
 from ai_planner import generate_plan
+from rag import retrieve_knowledge
 from stats import compute_user_stats
 from translations import t as translate, QUOTE_KEYS
 
@@ -562,65 +564,145 @@ def set_habits():
     )
 
 
-@app.route("/now", methods=["GET"])
+@app.route("/reuse_habits", methods=["POST"])
 @login_required
-def now():
-    """Show the 'Now' page.
+def reuse_habits():
+    """Start a new 21-day challenge reusing the previous round's habits.
 
-    Only available during an active 21-day challenge:
-    - No habits set, challenge not started, or challenge finished →
-      prompt the user to set habits / start a new round.
-    - All habits done today → 'today complete' message.
-    - Otherwise → bedtime input + 'What to do now' AI planner.
+    Copies each non-archived habit (name + phase/bracket) into a fresh
+    round starting today, preserving the completed round's history the
+    same way set_habits does. The user's timezone is left unchanged.
+    """
+    user_id = session["user_id"]
+    lang = session.get('lang', 'en')
+    db = get_db()
+
+    # Snapshot the habits to copy BEFORE archiving/deleting them.
+    old_habits = db.execute(
+        "SELECT name, phase FROM habits WHERE user_id = ? AND archived = 0",
+        (user_id,)
+    ).fetchall()
+
+    if not old_habits:
+        return apology(translate("reuse.error_no_habits", lang))
+
+    today = user_today(user_id).isoformat()
+
+    # Same reset semantics as set_habits: a mid-challenge reset deletes
+    # the incomplete cycle's rows; a finished round is archived so its
+    # history stays on the Completion Calendar.
+    user_row = db.execute(
+        "SELECT challenge_start_date FROM users WHERE id = ?",
+        (user_id,)
+    ).fetchone()
+    is_active_challenge = False
+    if user_row and user_row['challenge_start_date']:
+        start_date = date.fromisoformat(str(user_row['challenge_start_date']))
+        days_elapsed = (user_today(user_id) - start_date).days + 1
+        is_active_challenge = days_elapsed <= 21
+
+    try:
+        if is_active_challenge:
+            active_ids = [r['id'] for r in db.execute(
+                "SELECT id FROM habits WHERE user_id = ? AND archived = 0",
+                (user_id,)
+            ).fetchall()]
+            if active_ids:
+                placeholders = ",".join("?" * len(active_ids))
+                db.execute(
+                    f"DELETE FROM habit_logs WHERE habit_id IN ({placeholders})",
+                    active_ids
+                )
+                db.execute(
+                    f"DELETE FROM habits WHERE id IN ({placeholders})",
+                    active_ids
+                )
+        else:
+            db.execute(
+                "UPDATE habits SET archived = 1 WHERE user_id = ? AND archived = 0",
+                (user_id,)
+            )
+
+        round_row = db.execute(
+            "SELECT MAX(challenge_round) AS max_round FROM habits WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+        next_round = (round_row['max_round'] or 0) + 1
+
+        db.execute(
+            "UPDATE users SET challenge_start_date = ? WHERE id = ?",
+            (today, user_id)
+        )
+
+        for h in old_habits:
+            db.execute(
+                "INSERT INTO habits (user_id, name, phase, challenge_round, challenge_start, archived) VALUES (?, ?, ?, ?, ?, 0)",
+                (user_id, h['name'], h['phase'], next_round, today)
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return redirect("/today")
+
+
+# ---------- Now page (AI planner) ----------
+
+# Valid bedtime values for /api/now_plan ("HH:MM", 00:00–23:59).
+BEDTIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+def _now_planning_state(user_id):
+    """Shared guard for the /now page and the /api/now_plan endpoint.
+
+    Returns (state, habits_not_completed). state is None when planning
+    is allowed; otherwise it is one of 'no_habits', 'not_started',
+    'challenge_finished', or 'all_done' — matching both the
+    now_result.html template states and the now.api_* translation keys.
     """
     db = get_db()
-    user_id = session["user_id"]
     today_str = user_today(user_id).isoformat()
+
     total_habits = db.execute(
         "SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND archived = 0",
         (user_id,)
     ).fetchone()["n"]
-
-    # No habits yet → set habits first.
     if total_habits == 0:
-        return render_template('now_result.html', state='no_habits')
+        return 'no_habits', []
 
-    # Mirror /today's challenge-window checks so /now is only usable mid-challenge.
     user = db.execute(
         "SELECT challenge_start_date FROM users WHERE id = ?",
         (user_id,)
     ).fetchone()
     challenge_start = user['challenge_start_date']
-
-    # Has habits but challenge never started → set habits to begin.
     if challenge_start is None:
-        return render_template('now_result.html', state='not_started')
+        return 'not_started', []
 
     today_date = user_today(user_id)
     current_day = (today_date - date.fromisoformat(str(challenge_start))).days + 1
-
-    # 21-day challenge finished → prompt to start a new round.
     if current_day > 21:
-        return render_template('now_result.html', state='challenge_finished')
+        return 'challenge_finished', []
 
-    # Inside the challenge window: proceed as normal.
     habits_not_completed = db.execute(
         """SELECT name, phase FROM habits
            WHERE user_id = ? AND archived = 0
              AND (last_completed IS NULL OR last_completed != ?)""",
         (user_id, today_str)
     ).fetchall()
-
     if not habits_not_completed:
-        return render_template('now_result.html', state='all_done')
+        return 'all_done', []
 
-    current_time = datetime.now(get_user_timezone(user_id)).strftime("%H:%M")
+    return None, habits_not_completed
 
-    # Bedtime options: 20:00 → 03:00 in 30-min steps (covers typical sleep times).
-    # A <select> with explicit labels eliminates the AM/PM ambiguity of
-    # <input type="time">, where selecting "1:00" at noon could mean 13:00.
-    lang = session.get('lang', 'en')
-    bedtime_options = []
+
+def _bedtime_options(lang):
+    """Dropdown options from 20:00 → 03:00 in 30-min steps.
+
+    A <select> with explicit labels eliminates the AM/PM ambiguity of
+    <input type="time">, where selecting "1:00" at noon could mean 13:00.
+    """
+    options = []
     for h in list(range(20, 24)) + list(range(0, 4)):
         for m in (0, 30):
             if h == 3 and m == 30:
@@ -632,13 +714,35 @@ def now():
                 label = f"{h}:{m:02d} AM" if lang == 'en' else f"凌晨 {h}:{m:02d}"
             else:
                 label = f"{h-12}:{m:02d} PM" if lang == 'en' else f"晚上 {h-12}:{m:02d}"
-            bedtime_options.append((value, label))
+            options.append((value, label))
+    return options
+
+
+@app.route("/now", methods=["GET"])
+@login_required
+def now():
+    """Show the 'Now' page.
+
+    Only available during an active 21-day challenge:
+    - No habits set, challenge not started, or challenge finished →
+      prompt the user to set habits / start a new round.
+    - All habits done today → 'today complete' message.
+    - Otherwise → bedtime input + 'What to do now' AI planner.
+    """
+    user_id = session["user_id"]
+    state, habits_not_completed = _now_planning_state(user_id)
+
+    if state:
+        return render_template('now_result.html', state=state)
+
+    lang = session.get('lang', 'en')
+    current_time = datetime.now(get_user_timezone(user_id)).strftime("%H:%M")
 
     return render_template(
         'now.html',
         habits_not_completed=habits_not_completed,
         current_time=current_time,
-        bedtime_options=bedtime_options,
+        bedtime_options=_bedtime_options(lang),
     )
 
 
@@ -651,57 +755,54 @@ def now_plan():
     {"bedtime": "23:30"} (bedtime optional). Returns JSON:
     {"plan": "...", "latency_ms": ..., "usage": {...}} or {"error": "..."}.
     """
-    db = get_db()
     user_id = session["user_id"]
-    today_str = user_today(user_id).isoformat()
+    lang = session.get('lang', 'en')
 
-    # Same challenge-window guard as /now — defense in depth against
-    # direct API calls outside the challenge.
-    total_habits = db.execute(
-        "SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND archived = 0",
-        (user_id,)
-    ).fetchone()["n"]
-    if total_habits == 0:
-        return jsonify({"error": "No habits set. Define your habits first."}), 400
-
-    user = db.execute(
-        "SELECT challenge_start_date FROM users WHERE id = ?",
-        (user_id,)
-    ).fetchone()
-    challenge_start = user['challenge_start_date']
-    if challenge_start is None:
-        return jsonify({"error": "Challenge not started. Set your habits to begin."}), 400
-
-    today_date = user_today(user_id)
-    current_day = (today_date - date.fromisoformat(str(challenge_start))).days + 1
-    if current_day > 21:
-        return jsonify({"error": "This 21-day challenge is complete. Start a new round to plan again."}), 400
-
-    habits_not_completed = db.execute(
-        """SELECT name, phase FROM habits
-           WHERE user_id = ? AND archived = 0
-             AND (last_completed IS NULL OR last_completed != ?)""",
-        (user_id, today_str)
-    ).fetchall()
-
-    if not habits_not_completed:
-        return jsonify({"error": "All habits are already done today."}), 400
+    state, habits_not_completed = _now_planning_state(user_id)
+    if state:
+        return jsonify({"error": translate(f"now.api_{state}", lang)}), 400
 
     data = request.get_json(silent=True) or {}
-    bedtime = data.get("bedtime") or None
-    lang = session.get('lang', 'en')
-    user_tz = get_user_timezone(user_id)
+    bedtime = (data.get("bedtime") or "").strip() or None
+    if bedtime and not BEDTIME_RE.match(bedtime):
+        return jsonify({"error": translate("now.error_bad_bedtime", lang)}), 400
 
     habits_list = [{"name": h["name"], "phase": h["phase"]} for h in habits_not_completed]
-    result = generate_plan(habits_list, bedtime=bedtime, lang=lang, user_tz=user_tz)
+    user_tz = get_user_timezone(user_id)
+
+    # RAG: opt-in via the toggle on /now. Retrieval failures degrade to a
+    # normal plan (logged server-side) rather than erroring the request.
+    knowledge = None
+    if data.get("use_rag"):
+        try:
+            knowledge = retrieve_knowledge(
+                habits_list, bedtime=bedtime, lang=lang, user_tz=user_tz,
+            ) or None
+        except Exception:
+            app.logger.exception(
+                "rag retrieval failed (user %s); falling back to plain plan", user_id)
+            knowledge = None
+
+    result = generate_plan(
+        habits_list, bedtime=bedtime, lang=lang, user_tz=user_tz, knowledge=knowledge,
+    )
 
     if result["error"]:
-        return jsonify({"error": result["error"]}), 502
+        if result.get("error_type") == "config":
+            # Deployment misconfiguration — surface the fix, it is not
+            # sensitive and helps whoever runs the server.
+            return jsonify({"error": result["error"]}), 503
+        # Transient API/network failure — log the detail server-side,
+        # show the user a generic localized message instead of internals.
+        app.logger.error("now_plan failed (user %s): %s", user_id, result["error"])
+        return jsonify({"error": translate("now.error_ai", lang)}), 502
 
     return jsonify({
         "plan": result["plan"],
         "latency_ms": result["latency_ms"],
         "usage": result["usage"],
+        "rag_used": bool(knowledge),
+        "rag_sources": [k.get("title", "") for k in knowledge] if knowledge else [],
     })
 
 

@@ -32,11 +32,16 @@
         {% endif %}
 
         {% if challenge_finished %}
-        <a href="{{ url_for('set_habits') }}" class="btn btn-primary btn-large"
-           style="margin-top: 48px;"
-           onclick="return confirm('{{ t('today3.confirm') }}')">
-            {{ t('today3.btn') }}
-        </a>
+        <div style="margin-top: 48px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+            <a href="{{ url_for('set_habits') }}" class="btn btn-primary btn-large"
+               onclick="return confirm('{{ t('today3.confirm') }}')">
+                {{ t('today3.btn') }}
+            </a>
+            <form method="post" action="{{ url_for('reuse_habits') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-large">{{ t('stats.reuse_cta') }}</button>
+            </form>
+        </div>
         {% endif %}
     </div>
 </div>

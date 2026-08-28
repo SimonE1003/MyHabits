@@ -12,3 +12,7 @@ instance/
 
 # Playwright (if you don't need it)
 playwright/
+# RAG pipeline artifacts
+rag/raw/
+rag/clean/
+rag/tag_state.json

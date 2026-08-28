@@ -18,6 +18,13 @@
                 <option value="{{ value }}" {% if value == '23:00' %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
+
+            <label class="rag-toggle" for="ragSwitch" title="{{ t('now.rag_hint') }}">
+                <input type="checkbox" id="ragSwitch" class="rag-checkbox">
+                <span class="rag-track"><span class="rag-thumb"></span></span>
+                <span class="rag-name">{{ t('now.rag_label') }}</span>
+            </label>
+
             <button type="button" id="planBtn" class="btn btn-primary btn-large">{{ t('now.btn') }}</button>
         </div>
 
@@ -33,11 +40,21 @@
     const bedtimeInput = document.getElementById('bedtime');
     const result = document.getElementById('planResult');
     const form = document.getElementById('nowForm');
+    const ragSwitch = document.getElementById('ragSwitch');
     const btnLabel = "{{ t('now.btn') }}";
     const thinkingLabel = "{{ t('now.thinking') }}";
     const generatedLabel = "{{ t('now.generated') }}";
     const networkErrorLabel = "{{ t('now.network_error') }}";
     const timeoutLabel = "{{ t('now.error_timeout') }}";
+    const ragMetaTemplate = "{{ t('now.rag_meta') }}";
+
+    // Remember the RAG preference across visits (default: off until the
+    // knowledge base is built; enabling it is always safe — retrieval
+    // degrades to no-op when the KB is empty).
+    ragSwitch.checked = localStorage.getItem('nowRag') === '1';
+    ragSwitch.addEventListener('change', () => {
+        localStorage.setItem('nowRag', ragSwitch.checked ? '1' : '0');
+    });
 
     function escapeHtml(s) {
         return s.replace(/&/g, '&amp;')
@@ -49,27 +66,50 @@
         const lines = escapeHtml(md).split(/\r?\n/);
         const out = [];
         let inList = false;
+        let inTable = false;
+
+        const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+        const closeTable = () => { if (inTable) { out.push('</tbody></table>'); inTable = false; } };
+        const cells = (line) => line.replace(/^\|/, '').replace(/\|$/, '')
+                                    .split('|').map(c => c.trim());
+
         for (let line of lines) {
             const trimmed = line.trim();
-            if (!trimmed) {
-                if (inList) { out.push('</ul>'); inList = false; }
+            if (!trimmed) { closeList(); closeTable(); continue; }
+
+            // Markdown table row: | a | b | c |
+            if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+                const row = cells(trimmed);
+                // Separator row |---|---| — drop it, CSS draws the border.
+                if (row.every(c => /^:?-{2,}:?$/.test(c))) continue;
+                if (!inTable) {
+                    closeList();
+                    out.push('<table class="plan-table"><thead><tr>' +
+                             row.map(c => `<th>${c}</th>`).join('') +
+                             '</tr></thead><tbody>');
+                    inTable = true;
+                } else {
+                    out.push('<tr>' + row.map(c => `<td>${c}</td>`).join('') + '</tr>');
+                }
                 continue;
             }
+            closeTable();
+
             let m = trimmed.match(/^###\s+(.+)$/);
             if (m) {
-                if (inList) { out.push('</ul>'); inList = false; }
+                closeList();
                 out.push(`<h3>${m[1]}</h3>`);
                 continue;
             }
             m = trimmed.match(/^##\s+(.+)$/);
             if (m) {
-                if (inList) { out.push('</ul>'); inList = false; }
+                closeList();
                 out.push(`<h2>${m[1]}</h2>`);
                 continue;
             }
             m = trimmed.match(/^#\s+(.+)$/);
             if (m) {
-                if (inList) { out.push('</ul>'); inList = false; }
+                closeList();
                 out.push(`<h2>${m[1]}</h2>`);
                 continue;
             }
@@ -79,10 +119,11 @@
                 out.push(`<li>${m[1]}</li>`);
                 continue;
             }
-            if (inList) { out.push('</ul>'); inList = false; }
+            closeList();
             out.push(`<p>${trimmed}</p>`);
         }
-        if (inList) out.push('</ul>');
+        closeList();
+        closeTable();
 
         return out.join('\n')
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -98,9 +139,10 @@
         form.style.pointerEvents = 'none';
         result.hidden = true;
 
-        // 90s hard cap — matches the 60s server timeout plus generous margin
+        // 75s hard cap — the server allows one retry (2 × 30s + delay),
+        // so this fires just after the server has truly given up.
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 90000);
+        const timeout = setTimeout(() => controller.abort(), 75000);
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -110,26 +152,34 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({ bedtime: bedtime }),
+                body: JSON.stringify({ bedtime: bedtime, use_rag: ragSwitch.checked }),
                 signal: controller.signal
             });
-            const data = await resp.json();
+            // Tolerate non-JSON error bodies (e.g. a 500 HTML page).
+            let data = null;
+            try { data = await resp.json(); } catch (_) { /* not JSON */ }
 
             result.hidden = false;
 
-            if (data.error) {
-                result.innerHTML = `<div class="plan-error">${escapeHtml(data.error)}</div>`;
+            if (!resp.ok || !data || data.error) {
+                const msg = data && data.error ? data.error : `HTTP ${resp.status}`;
+                result.innerHTML = `<div class="plan-error">${escapeHtml(msg)}</div>`;
             } else {
                 const seconds = data.latency_ms ? (data.latency_ms / 1000).toFixed(1) + 's' : '';
+                let meta = `${generatedLabel}${seconds ? ' ' + seconds : ''}`;
+                if (data.rag_used) {
+                    const n = Array.isArray(data.rag_sources) ? data.rag_sources.length : 0;
+                    meta += ' · ' + ragMetaTemplate.replace('{n}', n);
+                }
                 result.innerHTML =
                     `<div class="plan-text">${renderMarkdown(data.plan)}</div>` +
-                    `<div class="plan-meta">${generatedLabel}${seconds ? ' ' + seconds : ''}</div>`;
+                    `<div class="plan-meta">${escapeHtml(meta)}</div>`;
             }
             result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (e) {
             result.hidden = false;
             const msg = e.name === 'AbortError' ? timeoutLabel : e.message;
-            result.innerHTML = `<div class="plan-error">${networkErrorLabel}: ${escapeHtml(msg)}</div>`;
+            result.innerHTML = `<div class="plan-error">${networkErrorLabel}: ${escapeHtml(String(msg))}</div>`;
         } finally {
             clearTimeout(timeout);
             btn.disabled = false;

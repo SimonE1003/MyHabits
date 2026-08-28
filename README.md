@@ -10,6 +10,9 @@ Define up to six habits and assign each to a time phase (morning, afternoon, eve
 **AI Evening Planner (Now)**
 The standout feature. Open the "Now" page, enter your planned bedtime, and tap "What to do now." The app sends your remaining habits, the current time, and your bedtime to an AI model (HKU Claude API), which returns a concrete time-blocked plan for the evening. It knows to skip habits that would hurt sleep (e.g. an intense workout 60 minutes before bed) and orders activities from energizing to calming so you wind down naturally.
 
+**RAG Knowledge Base (Now)**
+Flip the RAG toggle on the Now page to ground plans in a local knowledge base built from Andrew Huberman's newsletters and podcast pages (447 pages, ~11k chunks). Retrieval is two-stage: time-of-day tags filter first (evening / pre-sleep / etc.), then a bilingual embedding model ranks by semantic similarity—so Chinese habit names match English sources. Build or refresh it with `python -m rag.build` (resumable; tags uncaptioned chunks via the Claude API under a built-in rate/quota cap). Plans show "RAG · N refs" when knowledge was injected.
+
 **Bilingual (English / 中文)**
 Switch language from the button in the top-right corner. Your preference is remembered across sessions. The AI planner also responds in the selected language.
 

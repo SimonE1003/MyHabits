@@ -101,7 +101,7 @@ TRANSLATIONS = {
         'zh': '以下是你的完成记录。看看哪些习惯已经稳固，哪些还需要再来一轮。'
     },
     'today3.tip_title':    {'en': 'Since this is your first cycle, here are some info on going forward', 'zh': '既然这是你的第一个周期，这里有一些后续建议'},
-    'today3.tip1':         {'en': 'Consider taking the next 21 days to track the same six habits.', 'zh': '考虑用接下来的 21 天继续追踪同样的六个习惯。'},
+    'today3.tip1':         {'en': 'Consider taking the next 21 days to track the same habits.', 'zh': '考虑用接下来的 21 天继续追踪同样的习惯。'},
     'today3.tip2':         {'en': 'This reveals which habits are forming strongly and which are not.', 'zh': '这样可以看出哪些习惯已稳固，哪些还不够。'},
     'today3.tip3':         {'en': 'Use the report to swap one strong habit for a new one you want to form.', 'zh': '根据报告，用一个已稳固的习惯换一个想培养的新习惯。'},
     'today3.btn':          {'en': 'Start a New 21-Day Challenge', 'zh': '开始新的 21 天挑战'},
@@ -144,6 +144,24 @@ TRANSLATIONS = {
     'now.generated':       {'en': 'Generated',        'zh': '生成用时'},
     'now.network_error':   {'en': 'Network error',    'zh': '网络错误'},
     'now.error_timeout':   {'en': 'Request timed out', 'zh': '请求超时'},
+    'now.error_ai':        {
+        'en': 'The AI service is temporarily unavailable. Please try again in a moment.',
+        'zh': 'AI 服务暂时不可用，请稍后再试。'
+    },
+    'now.error_bad_bedtime': {'en': 'Invalid bedtime.', 'zh': '无效的就寝时间。'},
+    'now.rag_label':        {'en': 'RAG', 'zh': 'RAG'},
+    'now.rag_hint':         {
+        'en': 'Ground the plan in the Huberman knowledge base (timing science: what helps or hurts at this hour)',
+        'zh': '让计划参考 Huberman 知识库（时间生物学：这个时间段做什么有益/有害）'
+    },
+    'now.rag_meta':         {'en': 'RAG · {n} refs', 'zh': 'RAG · {n} 条参考'},
+    'now.api_no_habits':   {'en': 'No habits set. Define your habits first.', 'zh': '尚未设置习惯，请先设置你的习惯。'},
+    'now.api_not_started': {'en': 'Challenge not started. Set your habits to begin.', 'zh': '挑战尚未开始，请先设置习惯。'},
+    'now.api_challenge_finished': {
+        'en': 'This 21-day challenge is complete. Start a new round to plan again.',
+        'zh': '本轮 21 天挑战已结束，开始新一轮后才能继续规划。'
+    },
+    'now.api_all_done':    {'en': 'All habits are already done today.', 'zh': '今天所有习惯都已完成。'},
 
     # ---- Now result page (edge cases) ----
     'now_result.no_habits_eyebrow': {'en': 'No habits yet',  'zh': '尚未设置习惯'},
@@ -279,6 +297,8 @@ TRANSLATIONS = {
     'stats.insufficient':  {'en': 'Not enough data yet — keep going for a meaningful score.', 'zh': '数据不足——继续坚持才能得到有意义的分数。'},
     'stats.round_ended':   {'en': 'This round has ended.', 'zh': '本轮挑战已结束。'},
     'stats.start_new_cta': {'en': 'Start a new 21-day challenge', 'zh': '开始新一轮 21 天挑战'},
+    'stats.reuse_cta':     {'en': 'Use same habits', 'zh': '沿用相同习惯'},
+    'reuse.error_no_habits': {'en': 'No habits from the previous round to reuse.', 'zh': '上一轮没有可沿用的习惯。'},
 
     # Score levels
     'stats.level_master':       {'en': 'Mastery',          'zh': '大师'},
