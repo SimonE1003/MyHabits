@@ -47,6 +47,8 @@
     const networkErrorLabel = "{{ t('now.network_error') }}";
     const timeoutLabel = "{{ t('now.error_timeout') }}";
     const ragMetaTemplate = "{{ t('now.rag_meta') }}";
+    const feedbackAskLabel = "{{ t('now.feedback_ask') }}";
+    const feedbackThanksLabel = "{{ t('now.feedback_thanks') }}";
 
     // Remember the RAG preference across visits (default: off until the
     // knowledge base is built; enabling it is always safe — retrieval
@@ -61,6 +63,36 @@
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
     }
+
+    // ---- Plan feedback (thumbs up/down) ----
+    // Snapshot of the plan currently on screen, sent along with the rating
+    // so each row in plan_feedback is self-contained for later analysis.
+    let currentPlan = null;   // {rag_used, bedtime, plan}
+
+    function sendFeedback(rating) {
+        const box = document.getElementById('planFeedback');
+        if (!box || box.dataset.state !== 'open') return;
+        box.dataset.state = 'sent';
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        fetch('{{ url_for("plan_feedback") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({
+                rating: rating,
+                rag_used: currentPlan ? currentPlan.rag_used : false,
+                bedtime: currentPlan ? currentPlan.bedtime : '',
+                plan: currentPlan ? currentPlan.plan : ''
+            })
+        }).catch(() => { /* rating is best-effort; never nag the user */ });
+
+        box.innerHTML = `<span class="feedback-ask">${escapeHtml(feedbackThanksLabel)}</span>`;
+    }
+
+    result.addEventListener('click', (e) => {
+        const btn = e.target.closest('.feedback-btn');
+        if (btn) sendFeedback(btn.dataset.rating);
+    });
 
     function renderMarkdown(md) {
         const lines = escapeHtml(md).split(/\r?\n/);
@@ -171,9 +203,19 @@
                     const n = Array.isArray(data.rag_sources) ? data.rag_sources.length : 0;
                     meta += ' · ' + ragMetaTemplate.replace('{n}', n);
                 }
+                currentPlan = {
+                    rag_used: !!data.rag_used,
+                    bedtime: bedtime,
+                    plan: data.plan || ''
+                };
                 result.innerHTML =
                     `<div class="plan-text">${renderMarkdown(data.plan)}</div>` +
-                    `<div class="plan-meta">${escapeHtml(meta)}</div>`;
+                    `<div class="plan-meta">${escapeHtml(meta)}</div>` +
+                    `<div class="plan-feedback" id="planFeedback" data-state="open">` +
+                    `  <span class="feedback-ask">${escapeHtml(feedbackAskLabel)}</span>` +
+                    `  <button type="button" class="feedback-btn" data-rating="up" aria-label="👍" title="👍">👍</button>` +
+                    `  <button type="button" class="feedback-btn" data-rating="down" aria-label="👎" title="👎">👎</button>` +
+                    `</div>`;
             }
             result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (e) {

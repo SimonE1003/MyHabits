@@ -53,16 +53,23 @@ DIRECTIONS = ["do", "avoid", "neutral"]
 # ---------------- 规则词表（小写，词干匹配） ----------------
 
 TIME_RULES = [
-    ("post_wake", r"upon wak\w+|first thing in the morn\w+|waking up|after you wake|"
-                  r"shortly after wak\w+|zero to 90|0-90 minutes"),
-    ("morning",   r"\bmorning\b|\bmornings\b|early part of the day|before noon|early day"),
-    ("midday",    r"\bmidday\b|noon\b|middle of the day"),
-    ("afternoon", r"\bafternoon\b|after lunch"),
-    ("evening",   r"\bevening\b|\bevenings\b|end of the day|dinnertime"),
+    ("post_wake", r"upon wak\w+|first thing in the morn\w+|waking up|after (you )?wak\w+|"
+                  r"shortly after wak\w+|zero to 90|0-90 minutes|first 90 minutes|醒来后|起床后|刚醒"),
+    ("morning",   r"\bmorning\b|\bmornings\b|early part of the day|before noon|early day|"
+                  r"早上|早晨|清晨|上午|早间"),
+    ("midday",    r"\bmidday\b|noon\b|middle of the day|正午|中午|午间"),
+    ("afternoon", r"\bafternoon\b|after lunch|下午|午后"),
+    ("evening",   r"\bevening\b|\bevenings\b|end of the day|dinnertime|傍晚|晚上|晚间|黄昏"),
     ("pre_sleep", r"before (bed|sleep|bedtime)|prior to (bed|sleep)|leading up to (bed|sleep)|"
-                  r"close to bedtime|in preparation for sleep|wind(ing)? down"),
-    ("night",     r"\bnight\b|late night|middle of the night|2 a\.?m\.|3 a\.?m\.|4 a\.?m\."),
+                  r"close to bedtime|in preparation for sleep|wind(ing)? down|睡前|就寝前|入睡前|"
+                  r"上床前"),
+    ("night",     r"\bnight\b|late night|middle of the night|2 a\.?m\.|3 a\.?m\.|4 a\.?m\.|"
+                  r"深夜|夜间|凌晨|半夜"),
 ]
+
+# 无时序信息的 chunk 兜底标签：检索查询的窗口列表恒含 "anytime"，
+# 打上 anytime 后该 chunk 在任何时段都可被余弦排序召回（否则永远不可见）
+ANYTIME = ["anytime"]
 
 ACTIVITY_RULES = [
     ("meditation",       r"meditat\w+|mindful\w*"),
@@ -223,7 +230,7 @@ def tag(only_rule=False, dry_run=False):
                 db.execute(
                     "UPDATE chunks SET time_windows=?, activities=?, "
                     "tag_source='rule' WHERE id=?",
-                    (json.dumps(tw), json.dumps(acts), cid))
+                    (json.dumps(tw or ANYTIME), json.dumps(acts), cid))
             rule_done += 1
         else:
             claude_pending.append((cid, text))
@@ -252,7 +259,7 @@ def tag(only_rule=False, dry_run=False):
                 db.execute(
                     "UPDATE chunks SET time_windows=?, activities=?, "
                     "direction=?, tag_source='claude' WHERE id=?",
-                    (json.dumps(tw), json.dumps(acts), d, cid))
+                    (json.dumps(tw or ANYTIME), json.dumps(acts), d, cid))
                 claude_done += 1
         db.commit()
         if i + BATCH_SIZE < len(claude_pending):

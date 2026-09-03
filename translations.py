@@ -155,6 +155,8 @@ TRANSLATIONS = {
         'zh': '让计划参考 Huberman 知识库（时间生物学：这个时间段做什么有益/有害）'
     },
     'now.rag_meta':         {'en': 'RAG · {n} refs', 'zh': 'RAG · {n} 条参考'},
+    'now.feedback_ask':     {'en': 'Was this plan helpful?', 'zh': '这个计划有帮助吗？'},
+    'now.feedback_thanks':  {'en': 'Thanks for the feedback.', 'zh': '感谢反馈。'},
     'now.api_no_habits':   {'en': 'No habits set. Define your habits first.', 'zh': '尚未设置习惯，请先设置你的习惯。'},
     'now.api_not_started': {'en': 'Challenge not started. Set your habits to begin.', 'zh': '挑战尚未开始，请先设置习惯。'},
     'now.api_challenge_finished': {

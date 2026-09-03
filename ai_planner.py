@@ -65,9 +65,16 @@ SYSTEM_PROMPTS = {
         "doing one small habit or calling it a night.\n"
         "6. If a 'Reference knowledge' section is provided, use it to inform durations "
         "and advice; it overrides your defaults where they conflict.\n"
-        "7. Output as clean Markdown: a short opening line, then a time-blocked schedule, "
-        "then a 'Skip tonight' section if needed. Keep it concise and actionable. "
-        "No preamble, no closing remarks."
+        "7. Consider the day of week: weekends can be looser; weekdays favor "
+        "recovery-focused wind-downs.\n"
+        "8. Output as clean Markdown: a short opening line, then the time blocks, "
+        "then a 'Skip tonight' section if needed. NEVER use Markdown tables — "
+        "columns squeeze the notes. Instead, each time block uses this format:\n"
+        "**HH:MM–HH:MM | Habit name**\n"
+        "- Duration: ~XX min\n"
+        "- 1–3 bullet lines of practical guidance: why now (energy, light, "
+        "wind-down order), what to focus on, and one concrete tip.\n"
+        "Keep it actionable. No preamble, no closing remarks."
     ),
     'zh': (
         "你是一位沉稳、果断的习惯教练。根据当前时间、用户计划的就寝时间，以及今天尚未完成的习惯列表，"
@@ -80,13 +87,19 @@ SYSTEM_PROMPTS = {
         "4. 从高能耗到低能耗排序，让晚上逐渐放松下来。\n"
         "5. 如果就寝时间已过或只剩几分钟，直接说明，并建议做一个小习惯或今晚就算了。\n"
         "6. 如果提供了「参考资料」部分，用它来校准时长和建议；与你的默认判断冲突时以资料为准。\n"
-        "7. 用简洁的 Markdown 输出：一行简短开场，然后是时间块计划，如有需要再加一个「今晚跳过」部分。"
-        "不要前言，不要结语。全程使用中文。"
+        "7. 考虑今天是星期几：周末可以更松弛，工作日更偏向恢复性的收尾。\n"
+        "8. 用简洁的 Markdown 输出：一行简短开场，然后是时间块，如有需要再加一个「今晚跳过」部分。"
+        "绝不使用 Markdown 表格——表格列宽会把说明文字压得太短。每个时间块用这个格式：\n"
+        "**HH:MM–HH:MM｜习惯名**\n"
+        "- 时长：约 XX 分钟\n"
+        "- 1–3 行实用说明：为什么放在这个时段（精力、光照、放松顺序）、做什么、一条具体建议。\n"
+        "内容要可执行。不要前言，不要结语。全程使用中文。"
     ),
 }
 
 
 # ---------- Context assembly (RAG injection point) ----------
+
 
 def build_context(habits_not_completed, bedtime=None, lang='en', user_tz=None,
                   knowledge=None):
@@ -102,16 +115,25 @@ def build_context(habits_not_completed, bedtime=None, lang='en', user_tz=None,
                    build_prompt untouched.
 
     Returns:
-        dict with keys: now, tz, bedtime, habits, lang, knowledge.
+        dict with keys: now, tz, bedtime, habits, lang, knowledge,
+        weekday, is_weekend.
     """
     tz = user_tz if user_tz is not None else SHANGHAI_TZ
+    now = datetime.now(tz)
+    # 周几感知：周末计划更松弛，工作日倾向恢复
+    weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                'Saturday', 'Sunday']
+    weekday = weekdays[now.weekday()]
+    is_weekend = now.weekday() >= 5
     return {
-        "now": datetime.now(tz),
+        "now": now,
         "tz": tz,
         "bedtime": bedtime,
         "habits": list(habits_not_completed or []),
         "lang": lang if lang in SYSTEM_PROMPTS else 'en',
         "knowledge": knowledge,
+        "weekday": weekday,
+        "is_weekend": is_weekend,
     }
 
 
@@ -191,6 +213,12 @@ def build_prompt(ctx):
     sections = [
         f"Current time: {now.strftime('%H:%M')} ({ctx['tz']})",
         _bedtime_line(ctx),
+    ]
+    # 周几/周末感知：影响计划基调
+    if ctx.get("weekday"):
+        weekend_note = ("weekend" if ctx.get("is_weekend") else "a weekday")
+        sections.append(f"Day: {ctx['weekday']} ({weekend_note})")
+    sections += [
         "",
         f"Habits not completed today:\n{habit_list}",
     ]

@@ -8,10 +8,13 @@ A 21-day habit tracker built around the protocol popularized by Andrew Huberman 
 Define up to six habits and assign each to a time phase (morning, afternoon, evening). Track daily completion across a 21-day cycle, with a progress bar showing which day you're on and how many days remain. Each phase auto-collapses once all its habits are done, keeping the view calm and focused.
 
 **AI Evening Planner (Now)**
-The standout feature. Open the "Now" page, enter your planned bedtime, and tap "What to do now." The app sends your remaining habits, the current time, and your bedtime to an AI model (HKU Claude API), which returns a concrete time-blocked plan for the evening. It knows to skip habits that would hurt sleep (e.g. an intense workout 60 minutes before bed) and orders activities from energizing to calming so you wind down naturally.
+The standout feature. Open the "Now" page, enter your planned bedtime, and tap "What to do now." The app sends your remaining habits, the current time, and your bedtime to an AI model (HKU Claude API), which returns a concrete time-blocked plan for the evening. It knows to skip habits that would hurt sleep (e.g. an intense workout 60 minutes before bed), orders activities from energizing to calming, and takes the day of week into account—weekends get a looser plan, weekdays a recovery-focused one. Each time block includes practical notes on why it's scheduled then and what to focus on.
+
+**Plan Feedback (Now)**
+After a plan is generated, rate it with 👍 / 👎. Your ratings are saved so plan quality can be reviewed over time.
 
 **RAG Knowledge Base (Now)**
-Flip the RAG toggle on the Now page to ground plans in a local knowledge base built from Andrew Huberman's newsletters and podcast pages (447 pages, ~11k chunks). Retrieval is two-stage: time-of-day tags filter first (evening / pre-sleep / etc.), then a bilingual embedding model ranks by semantic similarity—so Chinese habit names match English sources. Build or refresh it with `python -m rag.build` (resumable; tags uncaptioned chunks via the Claude API under a built-in rate/quota cap). Plans show "RAG · N refs" when knowledge was injected.
+Flip the RAG toggle on the Now page to ground plans in a local knowledge base built from Andrew Huberman's newsletters, podcast pages, and Chinese summary notes. Retrieved knowledge informs durations and advice—Chinese habit names work too. Plans show "RAG · N refs" when knowledge was used. Build or refresh it with `python -m rag.build`; drop your own Markdown notes into `knowledge_base/` and run `python -m rag.build --local` to include them.
 
 **Bilingual (English / 中文)**
 Switch language from the button in the top-right corner. Your preference is remembered across sessions. The AI planner also responds in the selected language.

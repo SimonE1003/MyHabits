@@ -83,6 +83,21 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id);
         CREATE INDEX IF NOT EXISTS idx_logs_habit_date ON habit_logs(habit_id, completed_date);
+
+        -- Thumbs up/down on AI plans shown on the Now page. plan_excerpt
+        -- keeps a short snapshot so ratings can be analysed later.
+        CREATE TABLE IF NOT EXISTS plan_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            rating TEXT NOT NULL CHECK (rating IN ('up', 'down')),
+            lang TEXT DEFAULT 'en',
+            rag_used INTEGER DEFAULT 0,
+            bedtime TEXT DEFAULT NULL,
+            plan_excerpt TEXT DEFAULT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_feedback_user ON plan_feedback(user_id);
     """)
     db.commit()
     db.close()
@@ -133,6 +148,22 @@ migrate_db()
 def make_session_permanent():
     """Extend every session to use the 30-day lifetime."""
     session.permanent = True
+
+
+@app.before_request
+def validate_session_user():
+    """Drop sessions whose user no longer exists (e.g. dev DB cleanup).
+
+    Without this, a stale cookie renders pages as a "no habits" ghost user
+    and the next POST (set_habits, mark_done…) dies on a FOREIGN KEY error.
+    """
+    uid = session.get("user_id")
+    if uid is None:
+        return None
+    if get_db().execute("SELECT 1 FROM users WHERE id = ?", (uid,)).fetchone() is None:
+        session.clear()
+        return redirect("/login")
+    return None
 
 
 @app.teardown_appcontext
@@ -804,6 +835,43 @@ def now_plan():
         "rag_used": bool(knowledge),
         "rag_sources": [k.get("title", "") for k in knowledge] if knowledge else [],
     })
+
+
+@app.route("/api/plan_feedback", methods=["POST"])
+@login_required
+def plan_feedback():
+    """Record a thumbs up/down on the plan the user just saw.
+
+    Expects JSON: {"rating": "up"|"down", "rag_used": bool,
+    "bedtime": "HH:MM", "plan": "..."} — everything but `rating` is
+    optional context for later analysis. Always answers 200/400 JSON.
+    """
+    lang = session.get('lang', 'en')
+    data = request.get_json(silent=True) or {}
+    rating = data.get("rating")
+    if rating not in ("up", "down"):
+        return jsonify({"error": "invalid rating"}), 400
+
+    bedtime = (data.get("bedtime") or "").strip() or None
+    if bedtime and not BEDTIME_RE.match(bedtime):
+        bedtime = None
+    plan_excerpt = (data.get("plan") or "")[:500].strip() or None
+
+    db = get_db()
+    try:
+        db.execute(
+            """INSERT INTO plan_feedback (user_id, rating, lang, rag_used, bedtime, plan_excerpt)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (session["user_id"], rating, lang,
+             1 if data.get("rag_used") else 0, bedtime, plan_excerpt)
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        app.logger.exception("plan_feedback insert failed (user %s)", session["user_id"])
+        return jsonify({"error": "storage failed"}), 500
+
+    return jsonify({"ok": True})
 
 
 @app.route("/mark_done", methods=["POST"])
