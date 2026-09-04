@@ -589,6 +589,30 @@ a:hover { color: var(--text); }
     max-width: 540px;
 }
 
+/* ---------- Quiet restart link (Today page) ---------- */
+/* Deliberately faint: a reset is an escape hatch, not a feature to tempt. */
+.restart-link-wrap {
+    margin-top: 24px;
+}
+.restart-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-faint);
+    font-family: var(--font-body);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transition: color 0.15s var(--ease), text-decoration-color 0.15s var(--ease);
+}
+.restart-link:hover {
+    color: var(--text-muted);
+    text-decoration-color: var(--text-muted);
+}
+
 /* ---------- Empty state ---------- */
 .empty-state {
     text-align: center;

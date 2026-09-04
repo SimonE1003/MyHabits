@@ -92,6 +92,11 @@ TRANSLATIONS = {
     'today.confirm_done':  {'en': 'Mark this habit as done?', 'zh': '将此习惯标记为已完成？'},
     'today.network_error': {'en': 'Network error. Please check your connection.', 'zh': '网络错误，请检查连接。'},
     'today.failed_update': {'en': 'Failed to update. Please reload.', 'zh': '更新失败，请刷新页面。'},
+    'today.restart_link':  {'en': 'Start this round over', 'zh': '用这些习惯重新开始一轮'},
+    'today.restart_confirm': {
+        'en': 'This deletes this round\u2019s progress and restarts from Day 1 with the same habits. Continue?',
+        'zh': '这会删除本轮全部进度，用同样的习惯从第 1 天重新开始。确定继续吗？'
+    },
 
     # ---- Today page (finished) ----
     'today3.eyebrow':      {'en': 'Challenge complete',  'zh': '挑战完成'},

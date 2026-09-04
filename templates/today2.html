@@ -56,6 +56,16 @@
         {% if random_quote_key %}
         <div class="quote">{{ t(random_quote_key) }}</div>
         {% endif %}
+
+        <!-- Quiet restart: same habits, fresh round. Deliberately a small
+             muted link so it never tempts an impulsive reset. -->
+        <div class="restart-link-wrap">
+            <form method="post" action="{{ url_for('reuse_habits') }}"
+                  onsubmit="return confirm('{{ t('today.restart_confirm') }}')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="restart-link">{{ t('today.restart_link') }}</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
